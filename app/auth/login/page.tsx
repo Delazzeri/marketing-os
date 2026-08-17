@@ -18,6 +18,7 @@ export default function LoginPage() {
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-background to-transparent" />
         <div className="relative flex h-full flex-col justify-end p-12 text-foreground">
           <p className="max-w-sm text-2xl font-semibold tracking-tight text-balance">
             Conteúdo, prazos e equipe em perfeita sintonia.
