@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Image from "next/image";
 import { signIn, type SignInState } from "@/lib/actions/auth";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
@@ -14,8 +15,8 @@ export function LoginForm() {
   return (
     <div className="flex w-full max-w-sm flex-col gap-8">
       <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-xs font-bold text-primary-foreground">
-          MOS
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary to-accent">
+          <Image src="/logo-mkt.png" alt="Marketing OS" width={48} height={48} className="h-full w-full object-cover" />
         </div>
         <span className="text-sm font-medium">Marketing OS</span>
       </div>

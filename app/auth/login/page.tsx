@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export default function LoginPage() {
@@ -7,19 +8,21 @@ export default function LoginPage() {
         <LoginForm />
       </div>
 
-      <div className="relative hidden flex-1 overflow-hidden bg-gradient-to-br from-primary via-accent to-primary/70 lg:block">
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 40%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.2), transparent 45%)",
-          }}
+      <div className="relative hidden flex-1 overflow-hidden lg:block">
+        <Image
+          src="/login-hero.jpg"
+          alt=""
+          fill
+          priority
+          sizes="50vw"
+          className="object-cover"
         />
-        <div className="relative flex h-full flex-col justify-end p-12 text-primary-foreground">
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="relative flex h-full flex-col justify-end p-12 text-foreground">
           <p className="max-w-sm text-2xl font-semibold tracking-tight text-balance">
             Conteúdo, prazos e equipe em perfeita sintonia.
           </p>
-          <p className="mt-2 max-w-sm text-sm text-primary-foreground/80">
+          <p className="mt-2 max-w-sm text-sm text-foreground/80">
             Quadros, calendário e aprovações para times de conteúdo.
           </p>
         </div>
