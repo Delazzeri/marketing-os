@@ -1,0 +1,25 @@
+export const BOARD_ICONS = [
+  { glyph: "📷", title: "Instagram" },
+  { glyph: "🎵", title: "TikTok" },
+  { glyph: "▶️", title: "YouTube" },
+  { glyph: "👍", title: "Facebook" },
+  { glyph: "💼", title: "LinkedIn" },
+  { glyph: "📌", title: "Pinterest" },
+  { glyph: "✖️", title: "X / Twitter" },
+  { glyph: "💬", title: "WhatsApp" },
+  { glyph: "✈️", title: "Telegram" },
+  { glyph: "👻", title: "Snapchat" },
+  { glyph: "🎮", title: "Twitch" },
+  { glyph: "🎧", title: "Podcast" },
+  { glyph: "✉️", title: "Newsletter" },
+  { glyph: "🌐", title: "Site / Blog" },
+  { glyph: "📣", title: "Ads" },
+  { glyph: "🎯", title: "Campanha" },
+  { glyph: "⚡", title: "Briefing" },
+  { glyph: "📊", title: "Relatórios" },
+  { glyph: "👤", title: "Perfil" },
+  { glyph: "🛠", title: "Melhorias" },
+  { glyph: "📅", title: "Planejamento" },
+] as const;
+
+export const DEFAULT_BOARD_ICON = "📋";

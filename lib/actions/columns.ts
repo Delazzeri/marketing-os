@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { columnFieldsSchema } from "@/lib/validation/columns";
+import { columnFieldsSchema, OPTION_BASED_COLUMN_TYPES } from "@/lib/validation/columns";
 import { columnValueSchemaRegistry, type ColumnType } from "@/lib/column-types/registry.server";
 import { runAutomations } from "@/lib/actions/automations";
 
@@ -48,7 +48,9 @@ export async function createColumn(
     return { error: "Confira os campos obrigatórios." };
   }
 
-  const config = fields.type === "status" ? { options: fields.statusOptions } : {};
+  const config = (OPTION_BASED_COLUMN_TYPES as readonly string[]).includes(fields.type)
+    ? { options: fields.statusOptions }
+    : {};
 
   const { error: insertError } = await supabase.from("columns").insert({
     board_id: boardId,

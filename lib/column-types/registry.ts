@@ -1,10 +1,16 @@
 "use client";
 
+import { checkColumnType } from "./check";
 import { dateColumnType } from "./date";
+import { formatColumnType } from "./format";
 import { linkColumnType } from "./link";
+import { numberColumnType } from "./number";
+import { peopleColumnType } from "./people";
 import { personColumnType } from "./person";
+import { selectColumnType } from "./select";
 import { statusColumnType } from "./status";
 import { textColumnType } from "./text";
+import { whatsappColumnType } from "./whatsapp";
 import type { ColumnTypeDefinition } from "./types";
 
 export type { ColumnType } from "./schemas";
@@ -17,6 +23,12 @@ export const columnTypeRegistry: Record<ColumnType, ColumnTypeDefinition<any>> =
   date: dateColumnType,
   link: linkColumnType,
   person: personColumnType,
+  format: formatColumnType,
+  people: peopleColumnType,
+  number: numberColumnType,
+  select: selectColumnType,
+  check: checkColumnType,
+  whatsapp: whatsappColumnType,
 };
 
 export type { ColumnTypeDefinition } from "./types";

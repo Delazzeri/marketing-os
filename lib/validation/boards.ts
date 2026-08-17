@@ -8,9 +8,18 @@ export const slugSchema = z
 export const boardFieldsSchema = z.object({
   name: z.string().min(1, "Obrigatório"),
   slug: slugSchema,
+  icon: z.string().optional(),
+  color: z.string().optional(),
 });
 
 export type BoardFields = z.infer<typeof boardFieldsSchema>;
+
+export const folderFieldsSchema = z.object({
+  name: z.string().min(1, "Obrigatório"),
+  color: z.string().optional(),
+});
+
+export type FolderFields = z.infer<typeof folderFieldsSchema>;
 
 export const groupFieldsSchema = z.object({
   name: z.string().min(1, "Obrigatório"),

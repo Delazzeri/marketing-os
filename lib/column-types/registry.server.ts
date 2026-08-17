@@ -1,9 +1,15 @@
 import {
+  checkValueSchema,
   dateValueSchema,
+  formatValueSchema,
   linkValueSchema,
+  numberValueSchema,
+  peopleValueSchema,
   personValueSchema,
+  selectValueSchema,
   statusValueSchema,
   textValueSchema,
+  whatsappValueSchema,
 } from "./schemas";
 import type { z } from "zod";
 
@@ -17,4 +23,10 @@ export const columnValueSchemaRegistry: Record<ColumnType, z.ZodType<any>> = {
   date: dateValueSchema,
   link: linkValueSchema,
   person: personValueSchema,
+  format: formatValueSchema,
+  people: peopleValueSchema,
+  number: numberValueSchema,
+  select: selectValueSchema,
+  check: checkValueSchema,
+  whatsapp: whatsappValueSchema,
 };

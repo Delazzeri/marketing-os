@@ -2,6 +2,7 @@
 
 import { columnTypeRegistry } from "@/lib/column-types/registry";
 import type { ColumnType } from "@/lib/column-types/schemas";
+import { monthGridDays, toISODate, WEEKDAY_LABELS } from "@/lib/date-grid";
 
 interface ColumnData {
   id: number;
@@ -14,18 +15,6 @@ interface ItemData {
   id: number;
   title: string;
   values: Record<string, unknown>;
-}
-
-function startOfMonthGrid(reference: Date): Date {
-  const firstOfMonth = new Date(reference.getFullYear(), reference.getMonth(), 1);
-  const weekday = firstOfMonth.getDay();
-  const start = new Date(firstOfMonth);
-  start.setDate(firstOfMonth.getDate() - weekday);
-  return start;
-}
-
-function toISODate(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }
 
 export function PortalCalendar({
@@ -46,20 +35,14 @@ export function PortalCalendar({
     itemsByDate.set(value, list);
   }
 
-  const gridStart = startOfMonthGrid(reference);
-  const days = Array.from({ length: 42 }, (_, i) => {
-    const day = new Date(gridStart);
-    day.setDate(gridStart.getDate() + i);
-    return day;
-  });
-
+  const days = monthGridDays(reference);
   const currentMonth = reference.getMonth();
   const Badge = columnTypeRegistry[dateColumn.type].renderCalendarBadge;
 
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <div className="grid grid-cols-7 border-b border-border bg-muted/50 text-xs font-medium text-muted-foreground">
-        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((label) => (
+        {WEEKDAY_LABELS.map((label) => (
           <div key={label} className="px-2 py-1.5">
             {label}
           </div>

@@ -4,21 +4,30 @@ import { useState } from "react";
 import { linkValueSchema, type LinkValue } from "./schemas";
 import type { ColumnTypeDefinition, EditorProps, TableCellProps } from "./types";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
 
 export { linkValueSchema, type LinkValue } from "./schemas";
 
+// The pill's own click opens the editor (default EditableCell behavior via
+// the outer trigger button) so a set link stays editable; only the ↗ icon
+// navigates, with its own stopPropagation so it doesn't also open the editor.
 function LinkTableCell({ value }: TableCellProps<LinkValue>) {
   if (!value) return null;
   return (
-    <a
-      href={value.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="truncate text-sm text-primary underline-offset-2 hover:underline"
-      onClick={(event) => event.stopPropagation()}
-    >
-      {value.label || value.url}
-    </a>
+    <span className="inline-flex max-w-full items-center gap-1 truncate rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+      <span className="truncate">{value.label || value.url}</span>
+      <a
+        href={value.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(event) => event.stopPropagation()}
+        className="shrink-0 hover:opacity-70"
+        aria-label="Abrir link"
+      >
+        <ArrowUpRight className="h-3 w-3" />
+      </a>
+    </span>
   );
 }
 
@@ -36,7 +45,7 @@ function LinkEditor({ value, onCommit, onCancel }: EditorProps<LinkValue>) {
   }
 
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border bg-popover p-1.5 shadow-md">
+    <div className="flex w-64 flex-col gap-1.5 p-1">
       <Input
         autoFocus
         placeholder="https://..."
@@ -56,9 +65,16 @@ function LinkEditor({ value, onCommit, onCancel }: EditorProps<LinkValue>) {
           if (event.key === "Enter") commit();
           if (event.key === "Escape") onCancel();
         }}
-        onBlur={commit}
         className="h-7"
       />
+      <div className="flex justify-end gap-1.5 pt-0.5">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="button" size="sm" onClick={commit}>
+          Aplicar
+        </Button>
+      </div>
     </div>
   );
 }

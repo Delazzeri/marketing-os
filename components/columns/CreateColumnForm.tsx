@@ -23,7 +23,15 @@ const COLUMN_TYPE_LABELS: Record<ColumnType, string> = {
   date: "Data",
   link: "Link",
   person: "Pessoa",
+  format: "Formato",
+  people: "Pessoas",
+  number: "Número",
+  select: "Lista suspensa",
+  check: "Caixa de seleção",
+  whatsapp: "WhatsApp",
 };
+
+const OPTION_BASED_TYPES: ColumnType[] = ["status", "format", "select"];
 
 export function CreateColumnForm({ boardId }: { boardId: number }) {
   const [state, formAction, pending] = useActionState(createColumn.bind(null, boardId), initialState);
@@ -52,7 +60,7 @@ export function CreateColumnForm({ boardId }: { boardId: number }) {
         </Button>
       </div>
 
-      {type === "status" && <StatusOptionsEditor />}
+      {OPTION_BASED_TYPES.includes(type) && <StatusOptionsEditor />}
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
     </form>

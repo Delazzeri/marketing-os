@@ -1,8 +1,14 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { columnTypeRegistry } from "@/lib/column-types/registry";
 import type { ColumnType } from "@/lib/column-types/schemas";
+import { monthGridDays, toISODate, WEEKDAY_LABELS } from "@/lib/date-grid";
+import { quickCreateItemWithDate } from "@/lib/actions/items";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ColumnData {
   id: number;
@@ -17,16 +23,118 @@ interface ItemData {
   values: Record<string, unknown>;
 }
 
-function startOfMonthGrid(reference: Date): Date {
-  const firstOfMonth = new Date(reference.getFullYear(), reference.getMonth(), 1);
-  const weekday = firstOfMonth.getDay();
-  const start = new Date(firstOfMonth);
-  start.setDate(firstOfMonth.getDate() - weekday);
+type CalendarMode = "month" | "week" | "day";
+
+function startOfWeek(date: Date): Date {
+  const start = new Date(date);
+  start.setDate(date.getDate() - date.getDay());
+  start.setHours(0, 0, 0, 0);
   return start;
 }
 
-function toISODate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+function addDays(date: Date, amount: number): Date {
+  const next = new Date(date);
+  next.setDate(date.getDate() + amount);
+  return next;
+}
+
+function StatusLegend({ statusColumn }: { statusColumn: ColumnData | undefined }) {
+  if (!statusColumn) return null;
+  const options = (statusColumn.config.options as { label: string; color: string }[] | undefined) ?? [];
+  if (options.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+      {options.map((option) => (
+        <span key={option.label} className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: option.color }} />
+          {option.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function DayCell({
+  day,
+  inCurrentMonth,
+  dayItems,
+  workspaceSlug,
+  boardId,
+  dateColumn,
+  firstGroupId,
+  compact,
+}: {
+  day: Date;
+  inCurrentMonth: boolean;
+  dayItems: ItemData[];
+  workspaceSlug: string;
+  boardId: number;
+  dateColumn: ColumnData;
+  firstGroupId: number | null;
+  compact: boolean;
+}) {
+  const [, startTransition] = useTransition();
+  const [quickAdding, setQuickAdding] = useState(false);
+  const [title, setTitle] = useState("");
+  const Badge = columnTypeRegistry[dateColumn.type].renderCalendarBadge;
+
+  function submitQuickAdd() {
+    const trimmed = title.trim();
+    setQuickAdding(false);
+    setTitle("");
+    if (!trimmed || !firstGroupId) return;
+    startTransition(() => {
+      void quickCreateItemWithDate(boardId, firstGroupId, trimmed, dateColumn.id, toISODate(day));
+    });
+  }
+
+  return (
+    <div
+      className={`${compact ? "min-h-[140px]" : "min-h-[90px]"} border-b border-r border-border/60 p-1.5 ${
+        inCurrentMonth ? "" : "bg-muted/30"
+      }`}
+      onDoubleClick={() => {
+        if (!quickAdding && firstGroupId) setQuickAdding(true);
+      }}
+    >
+      <span className={`text-xs ${inCurrentMonth ? "text-foreground" : "text-muted-foreground"}`}>
+        {day.getDate()}
+      </span>
+      <div className="mt-1 flex flex-col gap-0.5">
+        {dayItems.map((item) => (
+          <Link
+            key={item.id}
+            href={`/${workspaceSlug}/boards/${boardId}/items/${item.id}`}
+            className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-xs hover:bg-accent"
+          >
+            {Badge && <Badge value={item.values[dateColumn.id] as never} config={dateColumn.config} />}
+            <span className="truncate">{item.title}</span>
+          </Link>
+        ))}
+        {quickAdding && (
+          <input
+            autoFocus
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            onBlur={submitQuickAdd}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submitQuickAdd();
+              }
+              if (event.key === "Escape") {
+                setQuickAdding(false);
+                setTitle("");
+              }
+            }}
+            placeholder="Novo item"
+            className="w-full rounded border border-ring bg-transparent px-1 py-0.5 text-xs outline-none"
+          />
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function CalendarView({
@@ -34,14 +142,19 @@ export function CalendarView({
   workspaceSlug,
   dateColumn,
   items,
-  reference = new Date(),
+  groups,
+  columns,
 }: {
   boardId: number;
   workspaceSlug: string;
   dateColumn: ColumnData;
   items: ItemData[];
-  reference?: Date;
+  groups: { id: number }[];
+  columns: ColumnData[];
 }) {
+  const [mode, setMode] = useState<CalendarMode>("month");
+  const [reference, setReference] = useState(() => new Date());
+
   const itemsByDate = new Map<string, ItemData[]>();
   for (const item of items) {
     const value = item.values[dateColumn.id];
@@ -51,56 +164,87 @@ export function CalendarView({
     itemsByDate.set(value, list);
   }
 
-  const gridStart = startOfMonthGrid(reference);
-  const days = Array.from({ length: 42 }, (_, i) => {
-    const day = new Date(gridStart);
-    day.setDate(gridStart.getDate() + i);
-    return day;
-  });
+  const firstGroupId = groups[0]?.id ?? null;
+  const statusColumn = columns.find((column) => column.type === "status");
 
+  const days =
+    mode === "month"
+      ? monthGridDays(reference)
+      : mode === "week"
+        ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(reference), i))
+        : [reference];
   const currentMonth = reference.getMonth();
-  const Badge = columnTypeRegistry[dateColumn.type].renderCalendarBadge;
+
+  function navigate(amount: number) {
+    setReference((prev) => {
+      if (mode === "month") return new Date(prev.getFullYear(), prev.getMonth() + amount, 1);
+      if (mode === "week") return addDays(prev, amount * 7);
+      return addDays(prev, amount);
+    });
+  }
+
+  const headerLabel =
+    mode === "day"
+      ? reference.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })
+      : reference.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <div className="grid grid-cols-7 border-b border-border bg-muted/50 text-xs font-medium text-muted-foreground">
-        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((label) => (
-          <div key={label} className="px-2 py-1.5">
-            {label}
-          </div>
-        ))}
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="ghost" size="icon-sm" onClick={() => navigate(-1)}>
+            <ChevronLeft />
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => setReference(new Date())}>
+            Hoje
+          </Button>
+          <Button type="button" variant="ghost" size="icon-sm" onClick={() => navigate(1)}>
+            <ChevronRight />
+          </Button>
+          <span className="text-sm font-medium capitalize">{headerLabel}</span>
+        </div>
+        <Tabs value={mode} onValueChange={(value) => setMode(value as CalendarMode)}>
+          <TabsList>
+            <TabsTrigger value="month">Mês</TabsTrigger>
+            <TabsTrigger value="week">Semana</TabsTrigger>
+            <TabsTrigger value="day">Dia</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
-      <div className="grid grid-cols-7">
-        {days.map((day) => {
-          const iso = toISODate(day);
-          const dayItems = itemsByDate.get(iso) ?? [];
-          const inCurrentMonth = day.getMonth() === currentMonth;
 
-          return (
-            <div
-              key={iso}
-              className={`min-h-[90px] border-b border-r border-border/60 p-1.5 ${
-                inCurrentMonth ? "" : "bg-muted/30"
-              }`}
-            >
-              <span className={`text-xs ${inCurrentMonth ? "text-foreground" : "text-muted-foreground"}`}>
-                {day.getDate()}
-              </span>
-              <div className="mt-1 flex flex-col gap-0.5">
-                {dayItems.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/${workspaceSlug}/boards/${boardId}/items/${item.id}`}
-                    className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-xs hover:bg-accent"
-                  >
-                    {Badge && <Badge value={item.values[dateColumn.id] as never} config={dateColumn.config} />}
-                    <span className="truncate">{item.title}</span>
-                  </Link>
-                ))}
+      <StatusLegend statusColumn={statusColumn} />
+
+      <div className="overflow-hidden rounded-lg border border-border">
+        {mode !== "day" && (
+          <div className="grid grid-cols-7 border-b border-border bg-muted/50 text-xs font-medium text-muted-foreground">
+            {WEEKDAY_LABELS.map((label) => (
+              <div key={label} className="px-2 py-1.5">
+                {label}
               </div>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        )}
+        <div className={mode === "day" ? "grid grid-cols-1" : "grid grid-cols-7"}>
+          {days.map((day) => {
+            const iso = toISODate(day);
+            const dayItems = itemsByDate.get(iso) ?? [];
+            const inCurrentMonth = mode !== "month" || day.getMonth() === currentMonth;
+
+            return (
+              <DayCell
+                key={iso}
+                day={day}
+                inCurrentMonth={inCurrentMonth}
+                dayItems={dayItems}
+                workspaceSlug={workspaceSlug}
+                boardId={boardId}
+                dateColumn={dateColumn}
+                firstGroupId={firstGroupId}
+                compact={mode !== "month"}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
   );

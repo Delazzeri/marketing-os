@@ -5,10 +5,10 @@ import { EditableCell } from "@/components/columns/EditableCell";
 import { UpdateComposer } from "@/components/items/UpdateComposer";
 import { UpdatesFeed } from "@/components/items/UpdatesFeed";
 import { AttachmentsList } from "@/components/items/AttachmentsList";
-import { SectionHeader } from "@/components/items/SectionHeader";
 import { isItemOverdue } from "@/lib/automations/overdue";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 export async function ItemPanel({
@@ -66,7 +66,7 @@ export async function ItemPanel({
     name: column.name,
     type: column.type as ColumnType,
     config:
-      column.type === "person"
+      column.type === "person" || column.type === "people"
         ? { ...(column.config as Record<string, unknown>), members }
         : ((column.config ?? {}) as Record<string, unknown>),
   }));
@@ -107,15 +107,26 @@ export async function ItemPanel({
 
       <Separator />
 
-      <div className="flex flex-col gap-2">
-        <SectionHeader>Atualizações</SectionHeader>
-        <UpdatesFeed updates={updates ?? []} members={members} />
-        <UpdateComposer itemId={item.id} members={members} />
-      </div>
+      <Tabs defaultValue="updates">
+        <TabsList>
+          <TabsTrigger value="updates">Atualizações</TabsTrigger>
+          <TabsTrigger value="files">Arquivos</TabsTrigger>
+          <TabsTrigger value="activity">Atividade</TabsTrigger>
+        </TabsList>
 
-      <Separator />
+        <TabsContent value="updates" className="flex flex-col gap-3 pt-3">
+          <UpdatesFeed updates={updates ?? []} members={members} />
+          <UpdateComposer itemId={item.id} members={members} />
+        </TabsContent>
 
-      <AttachmentsList itemId={item.id} attachments={attachments ?? []} members={members} />
+        <TabsContent value="files" className="pt-3">
+          <AttachmentsList itemId={item.id} attachments={attachments ?? []} members={members} />
+        </TabsContent>
+
+        <TabsContent value="activity" className="pt-3">
+          <p className="text-sm text-muted-foreground">Nenhuma atividade registrada ainda.</p>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

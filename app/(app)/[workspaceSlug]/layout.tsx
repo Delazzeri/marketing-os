@@ -28,10 +28,15 @@ export default async function WorkspaceLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: boards }, { data: notifications }] = await Promise.all([
+  const [{ data: boards }, { data: folders }, { data: notifications }] = await Promise.all([
     supabase
       .from("boards")
-      .select("id, name")
+      .select("id, name, icon, color, folder_id")
+      .eq("workspace_id", workspace.id)
+      .order("position", { ascending: true }),
+    supabase
+      .from("board_folders")
+      .select("id, name, color")
       .eq("workspace_id", workspace.id)
       .order("position", { ascending: true }),
     user
@@ -44,9 +49,22 @@ export default async function WorkspaceLayout({
       : Promise.resolve({ data: [] }),
   ]);
 
+  const boardSummaries = (boards ?? []).map((board) => ({
+    id: board.id,
+    name: board.name,
+    icon: board.icon as string | null,
+    color: board.color as string | null,
+    folderId: board.folder_id as number | null,
+  }));
+
   return (
     <SidebarProvider>
-      <AppSidebar workspaceSlug={workspaceSlug} workspaceName={workspace.name} boards={boards ?? []} />
+      <AppSidebar
+        workspaceSlug={workspaceSlug}
+        workspaceName={workspace.name}
+        boards={boardSummaries}
+        folders={folders ?? []}
+      />
       <SidebarInset>
         <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <SidebarTrigger />

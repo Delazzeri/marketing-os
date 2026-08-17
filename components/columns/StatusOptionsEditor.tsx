@@ -1,15 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import type { StatusOption } from "@/lib/column-types/status";
 import { COLOR_PALETTE } from "@/lib/column-types/color-palette";
 import { ColorSwatchPicker } from "@/components/columns/ColorSwatchPicker";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 
+// Shared editor for every option-based column type (status/format/select):
+// a list of { label, color } entries, written to a hidden "statusOptions"
+// input for CreateColumnForm to submit. The field name predates the
+// generalization but stays "statusOptions" since server-side parsing
+// (lib/actions/columns.ts, lib/validation/columns.ts) already keys on it.
+interface LabeledOption {
+  label: string;
+  color: string;
+}
+
 export function StatusOptionsEditor() {
-  const [options, setOptions] = useState<StatusOption[]>([]);
+  const [options, setOptions] = useState<LabeledOption[]>([]);
 
   function addOption() {
     const color = COLOR_PALETTE[options.length % COLOR_PALETTE.length];

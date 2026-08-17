@@ -3,10 +3,17 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export function ViewToggle({ hasDateColumn }: { hasDateColumn: boolean }) {
+export function ViewToggle({
+  hasDateColumn,
+  showDashboardTab = true,
+}: {
+  hasDateColumn: boolean;
+  showDashboardTab?: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const active = searchParams.get("view") === "calendar" ? "calendar" : "table";
+  const rawView = searchParams.get("view");
+  const active = rawView === "calendar" || rawView === "dashboard" ? rawView : "table";
 
   function setView(view: string) {
     const params = new URLSearchParams(searchParams);
@@ -29,6 +36,7 @@ export function ViewToggle({ hasDateColumn }: { hasDateColumn: boolean }) {
         >
           Calendário
         </TabsTrigger>
+        {showDashboardTab && <TabsTrigger value="dashboard">Dashboards</TabsTrigger>}
       </TabsList>
     </Tabs>
   );

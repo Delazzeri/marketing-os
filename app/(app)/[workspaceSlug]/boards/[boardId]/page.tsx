@@ -2,20 +2,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CreateGroupForm } from "@/components/boards/CreateGroupForm";
-import { DeleteGroupButton } from "@/components/boards/DeleteGroupButton";
-import { CreateItemForm } from "@/components/items/CreateItemForm";
+import { BoardContent } from "@/components/boards/BoardContent";
 import { CreateColumnForm } from "@/components/columns/CreateColumnForm";
-import { BoardTable } from "@/components/boards/BoardTable";
 import { CalendarView } from "@/components/views/CalendarView";
+import { DashboardView } from "@/components/views/DashboardView";
 import { ViewToggle } from "@/components/views/ViewToggle";
 import { PortalTokenPanel } from "@/components/portal/PortalTokenPanel";
 import { AutomationsPanel } from "@/components/automations/AutomationsPanel";
 import { computeOverdueItemIds } from "@/lib/automations/overdue";
 import { getWorkspaceMembersWithEmail } from "@/lib/supabase/user-lookup";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
+import type { DashboardWidgetType } from "@/lib/validation/dashboards";
 
 export default async function BoardPage({
   params,
@@ -36,7 +35,7 @@ export default async function BoardPage({
 
   if (!board) notFound();
 
-  const [{ data: groups }, { data: items }, { data: columns }, { data: overdueAutomation }] =
+  const [{ data: groups }, { data: items }, { data: columns }, { data: overdueAutomation }, { data: dashboards }] =
     await Promise.all([
       supabase
         .from("groups")
@@ -56,6 +55,11 @@ export default async function BoardPage({
         .eq("action_type", "mark_overdue")
         .eq("enabled", true)
         .maybeSingle(),
+      supabase
+        .from("dashboards")
+        .select("id, name, dashboard_widgets(id, type, config)")
+        .eq("board_id", board.id)
+        .order("position", { ascending: true }),
     ]);
 
   const members = await getWorkspaceMembersWithEmail(board.workspace_id as number);
@@ -65,7 +69,7 @@ export default async function BoardPage({
     name: column.name,
     type: column.type as ColumnType,
     config:
-      column.type === "person"
+      column.type === "person" || column.type === "people"
         ? { ...(column.config as Record<string, unknown>), members }
         : ((column.config ?? {}) as Record<string, unknown>),
   }));
@@ -79,6 +83,17 @@ export default async function BoardPage({
 
   const dateColumn = boardColumns.find((column) => column.type === "date");
   const showCalendar = view === "calendar" && dateColumn;
+  const showDashboard = view === "dashboard";
+
+  const boardDashboards = (dashboards ?? []).map((dashboard) => ({ id: dashboard.id, name: dashboard.name }));
+  const boardWidgets = (dashboards ?? []).flatMap((dashboard) =>
+    (dashboard.dashboard_widgets ?? []).map((widget) => ({
+      id: widget.id,
+      dashboardId: dashboard.id,
+      type: widget.type as DashboardWidgetType,
+      config: (widget.config ?? {}) as { title?: string; columnId?: number; [key: string]: unknown },
+    })),
+  );
 
   const overdueDateColumnId = (overdueAutomation?.action_config as { dateColumnId?: number } | null)
     ?.dateColumnId;
@@ -99,51 +114,40 @@ export default async function BoardPage({
 
       <ViewToggle hasDateColumn={Boolean(dateColumn)} />
 
-      {showCalendar ? (
+      {showDashboard ? (
+        <DashboardView
+          boardId={board.id}
+          dashboards={boardDashboards}
+          widgets={boardWidgets}
+          columns={boardColumns}
+          items={boardItems}
+        />
+      ) : showCalendar ? (
         <CalendarView
           boardId={board.id}
           workspaceSlug={workspaceSlug}
           dateColumn={dateColumn}
           items={boardItems}
+          groups={groups ?? []}
+          columns={boardColumns}
         />
       ) : (
-        <div className="flex flex-col gap-8">
-          {(groups ?? []).map((group) => {
-            const groupItems = boardItems.filter((item) => item.groupId === group.id);
-
-            return (
-              <div key={group.id} className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-4 w-1.5 rounded-full"
-                    style={{ backgroundColor: group.color ?? "var(--color-muted-foreground)" }}
-                  />
-                  <h2 className="text-sm font-semibold">{group.name}</h2>
-                  <Badge variant="secondary">{groupItems.length}</Badge>
-                  <DeleteGroupButton groupId={group.id} />
-                </div>
-
-                <BoardTable
-                  key={`${boardColumns.map((c) => c.id).join(",")}|${groupItems.map((i) => i.id).join(",")}`}
-                  boardId={board.id}
-                  workspaceSlug={workspaceSlug}
-                  columns={boardColumns}
-                  items={groupItems}
-                  overdueItemIds={overdueItemIds}
-                />
-
-                <CreateItemForm boardId={board.id} groupId={group.id} />
-              </div>
-            );
-          })}
-          {(groups ?? []).length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum grupo ainda.</p>
-          )}
-        </div>
+        <BoardContent
+          boardId={board.id}
+          workspaceSlug={workspaceSlug}
+          groups={groups ?? []}
+          columns={boardColumns}
+          items={boardItems}
+          overdueItemIds={overdueItemIds}
+        />
       )}
 
-      <CreateGroupForm boardId={board.id} />
-      <CreateColumnForm boardId={board.id} />
+      {!showDashboard && (
+        <>
+          <CreateGroupForm boardId={board.id} />
+          <CreateColumnForm boardId={board.id} />
+        </>
+      )}
 
       <Separator className="mt-4" />
       <div className="flex flex-col gap-6">

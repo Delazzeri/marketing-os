@@ -4,6 +4,7 @@ import { PortalTable } from "@/components/portal/PortalTable";
 import { PortalCalendar } from "@/components/portal/PortalCalendar";
 import { PortalUpdatesFeed } from "@/components/portal/PortalUpdatesFeed";
 import { ViewToggle } from "@/components/views/ViewToggle";
+import { getWorkspaceMembersWithEmail } from "@/lib/supabase/user-lookup";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 export default async function PortalPage({
@@ -29,11 +30,13 @@ export default async function PortalPage({
 
   const boardId = portalToken.board_id as number;
 
-  const { data: board } = await service.from("boards").select("id, name").eq("id", boardId).single();
+  const { data: board } = await service.from("boards").select("id, name, workspace_id").eq("id", boardId).single();
   if (!board) notFound();
 
+  const members = await getWorkspaceMembersWithEmail(board.workspace_id as number);
+
   const [{ data: groups }, { data: items }, { data: columns }, { data: updates }] = await Promise.all([
-    service.from("groups").select("id, name").eq("board_id", boardId).order("position", { ascending: true }),
+    service.from("groups").select("id, name, color").eq("board_id", boardId).order("position", { ascending: true }),
     service
       .from("items")
       .select("id, title, group_id, values")
@@ -51,7 +54,10 @@ export default async function PortalPage({
     id: column.id,
     name: column.name,
     type: column.type as ColumnType,
-    config: (column.config ?? {}) as Record<string, unknown>,
+    config:
+      column.type === "person" || column.type === "people"
+        ? { ...(column.config as Record<string, unknown>), members }
+        : ((column.config ?? {}) as Record<string, unknown>),
   }));
 
   const boardItems = (items ?? []).map((item) => ({
@@ -71,7 +77,7 @@ export default async function PortalPage({
         <span className="text-sm text-muted-foreground">Portal do cliente · somente leitura</span>
       </div>
 
-      <ViewToggle hasDateColumn={Boolean(dateColumn)} />
+      <ViewToggle hasDateColumn={Boolean(dateColumn)} showDashboardTab={false} />
 
       {showCalendar ? (
         <PortalCalendar dateColumn={dateColumn} items={boardItems} />
@@ -81,11 +87,20 @@ export default async function PortalPage({
             const groupItems = boardItems.filter((item) => item.groupId === group.id);
             return (
               <div key={group.id} className="flex flex-col gap-2">
-                <h2 className="text-sm font-semibold">{group.name}</h2>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-4 w-1 shrink-0 rounded-full"
+                    style={{ backgroundColor: group.color ?? "var(--color-muted-foreground)" }}
+                  />
+                  <h2 className="text-sm font-semibold">{group.name}</h2>
+                </div>
                 <PortalTable columns={boardColumns} items={groupItems} />
               </div>
             );
           })}
+          {(groups ?? []).length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum item ainda.</p>
+          )}
         </div>
       )}
 
