@@ -17,10 +17,10 @@ export default function LoginPage() {
         />
         <div className="relative flex h-full flex-col justify-end p-12 text-primary-foreground">
           <p className="max-w-sm text-2xl font-semibold tracking-tight text-balance">
-            Boards, atualizações e o Portal do cliente — tudo num só lugar.
+            Conteúdo, prazos e equipe em perfeita sintonia.
           </p>
           <p className="mt-2 max-w-sm text-sm text-primary-foreground/80">
-            Substitua planilha, WhatsApp e Trello solto pelo fluxo de trabalho da sua agência.
+            Quadros, calendário e aprovações para times de conteúdo.
           </p>
         </div>
       </div>
