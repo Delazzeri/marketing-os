@@ -35,8 +35,21 @@ export function EditableCell({
   const Cell = definition.renderTableCell;
   const Editor = definition.renderEditor;
 
+  // Local optimistic override: updateItemValue's revalidatePath only
+  // invalidates the Next.js cache, it doesn't push new data into this
+  // already-rendered client tree. Without this, a saved value stayed
+  // invisible until something else (e.g. a manual reload) re-fetched the
+  // page — the edit had actually persisted, it just never appeared.
+  const [localValue, setLocalValue] = useState(value);
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setLocalValue(value);
+  }
+
   function commit(nextValue: unknown) {
     setEditing(false);
+    setLocalValue(nextValue);
     startTransition(() => {
       updateItemValue(itemId, columnId, nextValue);
     });
@@ -45,7 +58,7 @@ export function EditableCell({
   if (!canEdit) {
     return (
       <div className="flex min-h-[28px] w-full items-center px-1 text-left">
-        <Cell value={value ?? null} config={config} />
+        <Cell value={localValue ?? null} config={config} />
       </div>
     );
   }
@@ -56,7 +69,7 @@ export function EditableCell({
       onClick={() => setEditing(true)}
       className="flex min-h-[28px] w-full items-center rounded px-1 text-left hover:bg-accent"
     >
-      <Cell value={value ?? null} config={config} />
+      <Cell value={localValue ?? null} config={config} />
     </button>
   );
 
@@ -65,14 +78,14 @@ export function EditableCell({
       <Popover open={editing} onOpenChange={setEditing}>
         <PopoverTrigger render={trigger} />
         <PopoverContent align="start" className="w-auto p-0">
-          <Editor value={value ?? null} config={config} onCancel={() => setEditing(false)} onCommit={commit} />
+          <Editor value={localValue ?? null} config={config} onCancel={() => setEditing(false)} onCommit={commit} />
         </PopoverContent>
       </Popover>
     );
   }
 
   if (editing) {
-    return <Editor value={value ?? null} config={config} onCancel={() => setEditing(false)} onCommit={commit} />;
+    return <Editor value={localValue ?? null} config={config} onCancel={() => setEditing(false)} onCommit={commit} />;
   }
 
   return trigger;
