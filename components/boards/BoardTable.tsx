@@ -50,7 +50,7 @@ function SortableColumnHeader({ column }: { column: ColumnData }) {
     <th
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="min-w-[160px] px-3 py-2 text-left font-medium text-muted-foreground"
+      className="min-w-[160px] px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
     >
       <div className="flex items-center gap-1.5">
         <span {...attributes} {...listeners} className="cursor-grab select-none text-muted-foreground/50">
@@ -98,7 +98,7 @@ function SortableItemRow({
     <tr
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="group border-b border-border/60 last:border-0 hover:bg-muted/40"
+      className="group border-b border-border/40 last:border-0 hover:bg-muted/30"
     >
       <td className="w-8 px-2 py-1.5">
         <Checkbox
@@ -229,10 +229,10 @@ export function BoardTable({
         </div>
       )}
       <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-lg border border-border/60">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/50">
+              <tr className="border-b border-border/60 bg-muted/30">
                 <th className="w-8 px-2 py-2">
                   <Checkbox
                     checked={allSelected}
@@ -240,7 +240,9 @@ export function BoardTable({
                     aria-label="Selecionar todos"
                   />
                 </th>
-                <th className="min-w-[200px] px-3 py-2 text-left font-medium text-muted-foreground">Item</th>
+                <th className="min-w-[200px] px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  Item
+                </th>
                 <SortableContext
                   items={orderedColumns.map((c) => `column-${c.id}`)}
                   strategy={horizontalListSortingStrategy}

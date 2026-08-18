@@ -10,10 +10,13 @@ import { DashboardView } from "@/components/views/DashboardView";
 import { ViewToggle } from "@/components/views/ViewToggle";
 import { PortalTokenPanel } from "@/components/portal/PortalTokenPanel";
 import { AutomationsPanel } from "@/components/automations/AutomationsPanel";
+import { BoardSettingsDialog } from "@/components/boards/BoardSettingsDialog";
 import { computeOverdueItemIds } from "@/lib/automations/overdue";
 import { getWorkspaceMembersWithEmail } from "@/lib/supabase/user-lookup";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft } from "lucide-react";
+import { avatarColorFor } from "@/lib/avatar-color";
+import { DEFAULT_BOARD_ICON } from "@/lib/board-icons";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Zap, Link2 } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
 import type { DashboardWidgetType } from "@/lib/validation/dashboards";
 
@@ -30,7 +33,7 @@ export default async function BoardPage({
 
   const { data: board } = await supabase
     .from("boards")
-    .select("id, name, workspace_id")
+    .select("id, name, workspace_id, icon, color")
     .eq("id", boardId)
     .single();
 
@@ -113,16 +116,25 @@ export default async function BoardPage({
     ?.dateColumnId;
   const overdueItemIds = computeOverdueItemIds(boardItems, overdueDateColumnId);
 
+  const boardIcon = (board.icon as string | null) ?? DEFAULT_BOARD_ICON;
+  const boardColor = (board.color as string | null) ?? avatarColorFor(board.name);
+
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-8">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Link
             href={`/${workspaceSlug}`}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base"
+            style={{ backgroundColor: `${boardColor}33` }}
+          >
+            {boardIcon}
+          </span>
           <h1 className="text-2xl font-semibold tracking-tight">{board.name}</h1>
         </div>
         <BoardHeader
@@ -163,22 +175,41 @@ export default async function BoardPage({
       )}
 
       {!showDashboard && (
-        <>
+        <div className="flex flex-wrap items-center gap-2">
           <CreateGroupForm boardId={board.id} />
           <CreateColumnForm boardId={board.id} />
-        </>
+        </div>
       )}
 
-      <Separator className="mt-4" />
-      <div className="flex flex-col gap-6">
-        <h2 className="text-sm font-semibold text-muted-foreground">Configurações do board</h2>
-        <AutomationsPanel
-          boardId={board.id}
-          workspaceId={board.workspace_id as number}
-          columns={boardColumns}
-          groups={groups ?? []}
-        />
-        <PortalTokenPanel boardId={board.id} />
+      <div className="flex items-center justify-end gap-1 border-t border-border pt-3">
+        <BoardSettingsDialog
+          title="Automações"
+          trigger={
+            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
+              <Zap />
+              Automações
+            </Button>
+          }
+        >
+          <AutomationsPanel
+            boardId={board.id}
+            workspaceId={board.workspace_id as number}
+            columns={boardColumns}
+            groups={groups ?? []}
+          />
+        </BoardSettingsDialog>
+
+        <BoardSettingsDialog
+          title="Portal do cliente"
+          trigger={
+            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
+              <Link2 />
+              Portal do cliente
+            </Button>
+          }
+        >
+          <PortalTokenPanel boardId={board.id} />
+        </BoardSettingsDialog>
       </div>
     </div>
   );

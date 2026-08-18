@@ -80,9 +80,11 @@ export function GroupSection({
   const statusColumn = columns.find((column) => column.type === "status");
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <span className="h-4 w-1 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+    <div
+      className="flex flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card pl-3 shadow-sm"
+      style={{ borderLeft: `3px solid ${color}` }}
+    >
+      <div className="flex items-center gap-2 pt-3 pr-3">
         <ColorSwatchPicker
           value={color}
           onChange={(next) => startTransition(() => setGroupColor(group.id, next))}
@@ -96,22 +98,18 @@ export function GroupSection({
         <DeleteGroupButton groupId={group.id} groupName={group.name} />
       </div>
 
-      <div className="flex items-stretch gap-0">
-        <span className="w-1 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-        <div className="min-w-0 flex-1">
-          <BoardTable
-            key={`${columns.map((c) => c.id).join(",")}|${items.map((i) => i.id).join(",")}`}
-            boardId={boardId}
-            workspaceSlug={workspaceSlug}
-            columns={columns}
-            items={items}
-            overdueItemIds={overdueItemIds}
-          />
-        </div>
+      <div className="min-w-0 pr-3">
+        <BoardTable
+          key={`${columns.map((c) => c.id).join(",")}|${items.map((i) => i.id).join(",")}`}
+          boardId={boardId}
+          workspaceSlug={workspaceSlug}
+          columns={columns}
+          items={items}
+          overdueItemIds={overdueItemIds}
+        />
       </div>
 
-      <div className="flex items-center gap-2 pl-1">
-        <span className="h-4 w-1 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+      <div className="flex items-center gap-2 pr-3 pb-3">
         <CreateItemForm boardId={boardId} groupId={group.id} />
         <GroupFooterProgress items={items} statusColumn={statusColumn} />
       </div>

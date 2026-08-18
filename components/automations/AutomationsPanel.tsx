@@ -46,41 +46,38 @@ export async function AutomationsPanel({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
-      <h2 className="text-sm font-semibold text-muted-foreground">Automações</h2>
-      <div className="flex flex-col gap-3">
-        <AutomationCard
-          boardId={boardId}
-          actionType="notify_assignee"
-          title="Quando o status mudar, notificar responsável"
-          automation={findAutomation("notify_assignee")}
-          statusColumns={statusColumns}
-          personColumns={personColumns}
-        />
-        <AutomationCard
-          boardId={boardId}
-          actionType="mark_overdue"
-          title="Quando o prazo vencer, marcar como atrasado"
-          automation={findAutomation("mark_overdue")}
-          dateColumns={dateColumns}
-        />
-        <AutomationCard
-          boardId={boardId}
-          actionType="show_in_portal_update"
-          title='Quando o status ficar em um valor específico, gerar atualização no Portal'
-          automation={findAutomation("show_in_portal_update")}
-          statusColumns={statusColumns}
-        />
-        <AutomationCard
-          boardId={boardId}
-          actionType="set_default_assignee"
-          title="Quando um item for criado num grupo, definir responsável padrão"
-          automation={findAutomation("set_default_assignee")}
-          groups={groups}
-          personColumns={personColumns}
-          members={members}
-        />
-      </div>
+    <div className="flex flex-col gap-3">
+      <AutomationCard
+        boardId={boardId}
+        actionType="notify_assignee"
+        title="Quando o status mudar, notificar responsável"
+        automation={findAutomation("notify_assignee")}
+        statusColumns={statusColumns}
+        personColumns={personColumns}
+      />
+      <AutomationCard
+        boardId={boardId}
+        actionType="mark_overdue"
+        title="Quando o prazo vencer, marcar como atrasado"
+        automation={findAutomation("mark_overdue")}
+        dateColumns={dateColumns}
+      />
+      <AutomationCard
+        boardId={boardId}
+        actionType="show_in_portal_update"
+        title='Quando o status ficar em um valor específico, gerar atualização no Portal'
+        automation={findAutomation("show_in_portal_update")}
+        statusColumns={statusColumns}
+      />
+      <AutomationCard
+        boardId={boardId}
+        actionType="set_default_assignee"
+        title="Quando um item for criado num grupo, definir responsável padrão"
+        automation={findAutomation("set_default_assignee")}
+        groups={groups}
+        personColumns={personColumns}
+        members={members}
+      />
     </div>
   );
 }
