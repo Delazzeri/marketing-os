@@ -70,13 +70,13 @@ function useResizableWidth(savedWidth: number, minWidth: number, onResize: (widt
     setResizing(true);
 
     function onMove(moveEvent: PointerEvent) {
-      setWidth(Math.max(minWidth, startWidth + (moveEvent.clientX - startX)));
+      setWidth(Math.round(Math.max(minWidth, startWidth + (moveEvent.clientX - startX))));
     }
     function onUp(upEvent: PointerEvent) {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       setResizing(false);
-      const finalWidth = Math.max(minWidth, startWidth + (upEvent.clientX - startX));
+      const finalWidth = Math.round(Math.max(minWidth, startWidth + (upEvent.clientX - startX)));
       setWidth(finalWidth);
       onResize(finalWidth);
     }

@@ -119,7 +119,8 @@ export async function setBoardIcon(boardId: number, icon: string | null) {
 
 export async function setItemColumnWidth(boardId: number, width: number) {
   const supabase = await createClient();
-  const { error } = await supabase.from("boards").update({ item_column_width: width }).eq("id", boardId);
+  const roundedWidth = Math.round(width);
+  const { error } = await supabase.from("boards").update({ item_column_width: roundedWidth }).eq("id", boardId);
   if (error) throw new Error(error.message);
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
 }

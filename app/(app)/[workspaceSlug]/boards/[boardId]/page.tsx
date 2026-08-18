@@ -34,32 +34,47 @@ export default async function BoardPage({
 
   if (!board) notFound();
 
-  const [{ data: groups }, { data: items }, { data: columns }, { data: overdueAutomation }, { data: dashboards }] =
-    await Promise.all([
-      supabase
-        .from("groups")
-        .select("id, name, color")
-        .eq("board_id", board.id)
-        .order("position", { ascending: true }),
-      supabase
-        .from("items")
-        .select("id, title, group_id, values")
-        .eq("board_id", board.id)
-        .order("position", { ascending: true }),
-      supabase.from("columns").select("id, name, type, config").eq("board_id", board.id).order("position", { ascending: true }),
-      supabase
-        .from("automations")
-        .select("action_config")
-        .eq("board_id", board.id)
-        .eq("action_type", "mark_overdue")
-        .eq("enabled", true)
-        .maybeSingle(),
-      supabase
-        .from("dashboards")
-        .select("id, name, dashboard_widgets(id, type, config)")
-        .eq("board_id", board.id)
-        .order("position", { ascending: true }),
-    ]);
+  const [
+    { data: groups },
+    { data: items },
+    { data: columns },
+    { data: overdueAutomation },
+    { data: dashboards },
+    { data: whiteboardNoteRows },
+    { data: whiteboardConnectionRows },
+  ] = await Promise.all([
+    supabase
+      .from("groups")
+      .select("id, name, color")
+      .eq("board_id", board.id)
+      .order("position", { ascending: true }),
+    supabase
+      .from("items")
+      .select("id, title, group_id, values")
+      .eq("board_id", board.id)
+      .order("position", { ascending: true }),
+    supabase.from("columns").select("id, name, type, config").eq("board_id", board.id).order("position", { ascending: true }),
+    supabase
+      .from("automations")
+      .select("action_config")
+      .eq("board_id", board.id)
+      .eq("action_type", "mark_overdue")
+      .eq("enabled", true)
+      .maybeSingle(),
+    supabase
+      .from("dashboards")
+      .select("id, name, dashboard_widgets(id, type, config)")
+      .eq("board_id", board.id)
+      .order("position", { ascending: true }),
+    supabase
+      .from("whiteboard_notes")
+      .select("id, text, color, position_x, position_y")
+      .eq("board_id", board.id),
+    supabase
+      .from("whiteboard_connections")
+      .select("id, from_note_id, to_note_id")
+      .eq("board_id", board.id),
+  ]);
 
   const members = await getWorkspaceMembersWithEmail(board.workspace_id as number);
 
@@ -99,6 +114,19 @@ export default async function BoardPage({
   const overdueDateColumnId = (overdueAutomation?.action_config as { dateColumnId?: number } | null)
     ?.dateColumnId;
   const overdueItemIds = computeOverdueItemIds(boardItems, overdueDateColumnId);
+
+  const whiteboardNotes = (whiteboardNoteRows ?? []).map((note) => ({
+    id: note.id,
+    text: note.text,
+    color: note.color,
+    positionX: note.position_x as number,
+    positionY: note.position_y as number,
+  }));
+  const whiteboardConnections = (whiteboardConnectionRows ?? []).map((connection) => ({
+    id: connection.id,
+    fromNoteId: connection.from_note_id as number,
+    toNoteId: connection.to_note_id as number,
+  }));
 
   const rawBoardLogo = board.icon as string | null;
   const boardLogo = rawBoardLogo?.startsWith("http") ? rawBoardLogo : null;
@@ -145,6 +173,8 @@ export default async function BoardPage({
         dateColumn={dateColumn}
         dashboards={boardDashboards}
         widgets={boardWidgets}
+        whiteboardNotes={whiteboardNotes}
+        whiteboardConnections={whiteboardConnections}
         itemColumnWidth={board.item_column_width as number | null}
         canEdit={canEdit}
       />

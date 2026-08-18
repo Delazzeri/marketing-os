@@ -37,11 +37,17 @@ export function PortalViewSwitcher({
   items: ItemData[];
   dateColumn: ColumnData | undefined;
 }) {
-  const [view, setView] = useState<"table" | "calendar" | "dashboard">("table");
+  const [view, setView] = useState<"table" | "calendar" | "dashboard" | "whiteboard">("table");
 
   return (
     <>
-      <ViewToggle hasDateColumn={Boolean(dateColumn)} showDashboardTab={false} view={view} onViewChange={setView} />
+      <ViewToggle
+        hasDateColumn={Boolean(dateColumn)}
+        showDashboardTab={false}
+        showWhiteboardTab={false}
+        view={view}
+        onViewChange={setView}
+      />
 
       {view === "calendar" && dateColumn ? (
         <PortalCalendar dateColumn={dateColumn} items={items} />

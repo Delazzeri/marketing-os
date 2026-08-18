@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BoardContent } from "@/components/boards/BoardContent";
 import { CalendarView } from "@/components/views/CalendarView";
 import { DashboardView } from "@/components/views/DashboardView";
+import { WhiteboardView } from "@/components/boards/WhiteboardView";
 import { ViewToggle } from "@/components/views/ViewToggle";
 import type { ColumnType } from "@/lib/column-types/schemas";
 import type { WidgetColumnData, WidgetItemData } from "@/lib/dashboard-widgets/registry";
@@ -41,6 +42,20 @@ interface WidgetData {
   config: { title?: string; columnId?: number; [key: string]: unknown };
 }
 
+interface WhiteboardNoteData {
+  id: number;
+  text: string;
+  color: string;
+  positionX: number;
+  positionY: number;
+}
+
+interface WhiteboardConnectionData {
+  id: number;
+  fromNoteId: number;
+  toNoteId: number;
+}
+
 // Everything the board page can show is fetched once on the server, so
 // switching between Tabela/Calendário/Dashboards is a pure client-side state
 // change here — no router.push/URL round-trip re-hitting the server for data
@@ -57,6 +72,8 @@ export function BoardViewSwitcher({
   dateColumn,
   dashboards,
   widgets,
+  whiteboardNotes,
+  whiteboardConnections,
   itemColumnWidth,
   canEdit = true,
 }: {
@@ -69,16 +86,25 @@ export function BoardViewSwitcher({
   dateColumn: ColumnData | undefined;
   dashboards: DashboardData[];
   widgets: WidgetData[];
+  whiteboardNotes: WhiteboardNoteData[];
+  whiteboardConnections: WhiteboardConnectionData[];
   itemColumnWidth?: number | null;
   canEdit?: boolean;
 }) {
-  const [view, setView] = useState<"table" | "calendar" | "dashboard">("table");
+  const [view, setView] = useState<"table" | "calendar" | "dashboard" | "whiteboard">("table");
 
   return (
     <>
       <ViewToggle hasDateColumn={Boolean(dateColumn)} view={view} onViewChange={setView} />
 
-      {view === "dashboard" ? (
+      {view === "whiteboard" ? (
+        <WhiteboardView
+          boardId={boardId}
+          notes={whiteboardNotes}
+          connections={whiteboardConnections}
+          canEdit={canEdit}
+        />
+      ) : view === "dashboard" ? (
         <DashboardView
           boardId={boardId}
           dashboards={dashboards}

@@ -194,7 +194,7 @@ export async function setColumnWidth(columnId: number, width: number) {
   const supabase = await createClient();
   const { data: column } = await supabase.from("columns").select("config").eq("id", columnId).single();
   if (!column) throw new Error("Coluna não encontrada.");
-  const config = { ...(column.config as Record<string, unknown>), width };
+  const config = { ...(column.config as Record<string, unknown>), width: Math.round(width) };
   const { error } = await supabase.from("columns").update({ config }).eq("id", columnId);
   if (error) throw new Error(error.message);
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
