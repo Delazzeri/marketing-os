@@ -1,8 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { GroupSection } from "@/components/boards/GroupSection";
 import { BoardToolbar, type SortState } from "@/components/boards/BoardToolbar";
+import { reorderGroups } from "@/lib/actions/items";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 interface ColumnData {
@@ -51,6 +61,30 @@ export function BoardContent({
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<number, Set<string>>>({});
   const [sort, setSort] = useState<SortState>({ columnId: null, direction: "asc" });
+  const [orderedGroups, setOrderedGroups] = useState(groups);
+  const [, startTransition] = useTransition();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const dndId = useId();
+
+  // Server Component parent only re-renders after a mutation triggers
+  // revalidatePath — local state exists purely for optimistic drag-reorder,
+  // same re-sync-on-prop-change pattern AppSidebar.tsx uses for boards/folders.
+  const [prevGroups, setPrevGroups] = useState(groups);
+  if (groups !== prevGroups) {
+    setPrevGroups(groups);
+    setOrderedGroups(groups);
+  }
+
+  function handleGroupDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedGroups.findIndex((g) => `group-${g.id}` === active.id);
+    const newIndex = orderedGroups.findIndex((g) => `group-${g.id}` === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const next = arrayMove(orderedGroups, oldIndex, newIndex);
+    setOrderedGroups(next);
+    startTransition(() => reorderGroups(next.map((g) => g.id)));
+  }
 
   const filterableColumns = useMemo(
     () =>
@@ -123,24 +157,28 @@ export function BoardContent({
         onSortChange={setSort}
       />
 
-      <div className="flex flex-col gap-8">
-        {groups.map((group) => {
-          const groupItems = filteredItems.filter((item) => item.groupId === group.id);
+      <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
+        <SortableContext items={orderedGroups.map((g) => `group-${g.id}`)} strategy={verticalListSortingStrategy}>
+          <div className="flex flex-col gap-8">
+            {orderedGroups.map((group) => {
+              const groupItems = filteredItems.filter((item) => item.groupId === group.id);
 
-          return (
-            <GroupSection
-              key={group.id}
-              boardId={boardId}
-              workspaceSlug={workspaceSlug}
-              group={group}
-              columns={columns}
-              items={groupItems}
-              overdueItemIds={overdueItemIds}
-            />
-          );
-        })}
-        {groups.length === 0 && <p className="text-sm text-muted-foreground">Nenhum grupo ainda.</p>}
-      </div>
+              return (
+                <GroupSection
+                  key={group.id}
+                  boardId={boardId}
+                  workspaceSlug={workspaceSlug}
+                  group={group}
+                  columns={columns}
+                  items={groupItems}
+                  overdueItemIds={overdueItemIds}
+                />
+              );
+            })}
+            {orderedGroups.length === 0 && <p className="text-sm text-muted-foreground">Nenhum grupo ainda.</p>}
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }

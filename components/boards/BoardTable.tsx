@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useId, useState, useTransition, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import {
   DndContext,
@@ -20,8 +20,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { EditableCell } from "@/components/columns/EditableCell";
 import { ColumnHeaderMenu } from "@/components/columns/ColumnHeaderMenu";
+import { CreateColumnForm } from "@/components/columns/CreateColumnForm";
 import { deleteItem, deleteItems, reorderItems } from "@/lib/actions/items";
-import { reorderColumns } from "@/lib/actions/columns";
+import { reorderColumns, setColumnWidth } from "@/lib/actions/columns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,24 +42,79 @@ interface ItemData {
   values: Record<string, unknown>;
 }
 
+const MIN_COLUMN_WIDTH = 120;
+const DEFAULT_COLUMN_WIDTH = 160;
+
 function SortableColumnHeader({ boardId, column }: { boardId: number; column: ColumnData }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `column-${column.id}`,
   });
+  const [, startTransition] = useTransition();
+  const savedWidth = (column.config.width as number | undefined) ?? DEFAULT_COLUMN_WIDTH;
+  const [width, setWidth] = useState(savedWidth);
+  const [resizing, setResizing] = useState(false);
+
+  // Re-sync when the column prop changes (e.g. another tab resized it) —
+  // same pattern as AppSidebar.tsx's board/folder prop sync.
+  const [prevSavedWidth, setPrevSavedWidth] = useState(savedWidth);
+  if (savedWidth !== prevSavedWidth) {
+    setPrevSavedWidth(savedWidth);
+    setWidth(savedWidth);
+  }
+
+  function startResize(event: ReactPointerEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startWidth = width;
+    setResizing(true);
+
+    function onMove(moveEvent: PointerEvent) {
+      const next = Math.max(MIN_COLUMN_WIDTH, startWidth + (moveEvent.clientX - startX));
+      setWidth(next);
+    }
+    function onUp(upEvent: PointerEvent) {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setResizing(false);
+      const finalWidth = Math.max(MIN_COLUMN_WIDTH, startWidth + (upEvent.clientX - startX));
+      setWidth(finalWidth);
+      startTransition(() => setColumnWidth(column.id, finalWidth));
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
 
   return (
     <th
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="group min-w-[160px] px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        width,
+        minWidth: width,
+        maxWidth: width,
+      }}
+      className="group relative px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
     >
-      <div className="flex items-center gap-1.5">
-        <span {...attributes} {...listeners} className="cursor-grab select-none text-muted-foreground/50">
+      <div className="flex items-center gap-1.5 overflow-hidden">
+        <span
+          {...attributes}
+          {...listeners}
+          className="shrink-0 cursor-grab select-none text-muted-foreground/50 opacity-0 group-hover:opacity-100"
+        >
           <GripVertical className="h-4 w-4" />
         </span>
-        {column.name}
+        <span className="truncate">{column.name}</span>
         <ColumnHeaderMenu boardId={boardId} column={column} />
       </div>
+      <span
+        onPointerDown={startResize}
+        className={`absolute top-0 right-0 h-full w-1.5 cursor-col-resize select-none ${
+          resizing ? "bg-primary" : "hover:bg-primary/40"
+        }`}
+      />
     </th>
   );
 }
@@ -127,7 +183,14 @@ function SortableItemRow({
         </div>
       </td>
       {columns.map((column) => (
-        <td key={column.id} className="px-1 py-1">
+        <td
+          key={column.id}
+          className="overflow-hidden px-1 py-1"
+          style={{
+            width: (column.config.width as number | undefined) ?? DEFAULT_COLUMN_WIDTH,
+            maxWidth: (column.config.width as number | undefined) ?? DEFAULT_COLUMN_WIDTH,
+          }}
+        >
           <EditableCell
             itemId={item.id}
             columnId={column.id}
@@ -242,6 +305,9 @@ export function BoardTable({
                     <SortableColumnHeader key={column.id} boardId={boardId} column={column} />
                   ))}
                 </SortableContext>
+                <th className="px-2 py-2">
+                  <CreateColumnForm boardId={boardId} />
+                </th>
               </tr>
             </thead>
             <tbody>

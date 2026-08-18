@@ -1,21 +1,16 @@
 import { notFound } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
-import { PortalTable } from "@/components/portal/PortalTable";
-import { PortalCalendar } from "@/components/portal/PortalCalendar";
+import { PortalViewSwitcher } from "@/components/portal/PortalViewSwitcher";
 import { PortalUpdatesFeed } from "@/components/portal/PortalUpdatesFeed";
-import { ViewToggle } from "@/components/views/ViewToggle";
 import { getWorkspaceMembersWithEmail } from "@/lib/supabase/user-lookup";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 export default async function PortalPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ view?: string }>;
 }) {
   const { token } = await params;
-  const { view } = await searchParams;
   const service = createServiceClient();
 
   const { data: portalToken } = await service
@@ -68,7 +63,6 @@ export default async function PortalPage({
   }));
 
   const dateColumn = boardColumns.find((column) => column.type === "date");
-  const showCalendar = view === "calendar" && dateColumn;
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
@@ -77,32 +71,7 @@ export default async function PortalPage({
         <span className="text-sm text-muted-foreground">Portal do cliente · somente leitura</span>
       </div>
 
-      <ViewToggle hasDateColumn={Boolean(dateColumn)} showDashboardTab={false} />
-
-      {showCalendar ? (
-        <PortalCalendar dateColumn={dateColumn} items={boardItems} />
-      ) : (
-        <div className="flex flex-col gap-8">
-          {(groups ?? []).map((group) => {
-            const groupItems = boardItems.filter((item) => item.groupId === group.id);
-            return (
-              <div key={group.id} className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-4 w-1 shrink-0 rounded-full"
-                    style={{ backgroundColor: group.color ?? "var(--color-muted-foreground)" }}
-                  />
-                  <h2 className="text-sm font-semibold">{group.name}</h2>
-                </div>
-                <PortalTable columns={boardColumns} items={groupItems} />
-              </div>
-            );
-          })}
-          {(groups ?? []).length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum item ainda.</p>
-          )}
-        </div>
-      )}
+      <PortalViewSwitcher groups={groups ?? []} columns={boardColumns} items={boardItems} dateColumn={dateColumn} />
 
       <PortalUpdatesFeed items={boardItems} updates={updates ?? []} />
     </div>

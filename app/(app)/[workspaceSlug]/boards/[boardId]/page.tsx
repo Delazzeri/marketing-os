@@ -1,20 +1,16 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BoardHeader } from "@/components/boards/BoardHeader";
 import { CreateGroupForm } from "@/components/boards/CreateGroupForm";
-import { BoardContent } from "@/components/boards/BoardContent";
-import { CreateColumnForm } from "@/components/columns/CreateColumnForm";
-import { CalendarView } from "@/components/views/CalendarView";
-import { DashboardView } from "@/components/views/DashboardView";
-import { ViewToggle } from "@/components/views/ViewToggle";
+import { BoardViewSwitcher } from "@/components/boards/BoardViewSwitcher";
 import { PortalTokenPanel } from "@/components/portal/PortalTokenPanel";
 import { AutomationsPanel } from "@/components/automations/AutomationsPanel";
 import { BoardSettingsDialog } from "@/components/boards/BoardSettingsDialog";
 import { computeOverdueItemIds } from "@/lib/automations/overdue";
 import { getWorkspaceMembersWithEmail } from "@/lib/supabase/user-lookup";
 import { avatarColorFor } from "@/lib/avatar-color";
-import { DEFAULT_BOARD_ICON } from "@/lib/board-icons";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Zap, Link2 } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
@@ -22,18 +18,15 @@ import type { DashboardWidgetType } from "@/lib/validation/dashboards";
 
 export default async function BoardPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ workspaceSlug: string; boardId: string }>;
-  searchParams: Promise<{ view?: string }>;
 }) {
   const { workspaceSlug, boardId } = await params;
-  const { view } = await searchParams;
   const supabase = await createClient();
 
   const { data: board } = await supabase
     .from("boards")
-    .select("id, name, workspace_id, icon, color")
+    .select("id, name, workspace_id, icon")
     .eq("id", boardId)
     .single();
 
@@ -99,8 +92,6 @@ export default async function BoardPage({
   }));
 
   const dateColumn = boardColumns.find((column) => column.type === "date");
-  const showCalendar = view === "calendar" && dateColumn;
-  const showDashboard = view === "dashboard";
 
   const boardDashboards = (dashboards ?? []).map((dashboard) => ({ id: dashboard.id, name: dashboard.name }));
   const boardWidgets = (dashboards ?? []).flatMap((dashboard) =>
@@ -116,8 +107,8 @@ export default async function BoardPage({
     ?.dateColumnId;
   const overdueItemIds = computeOverdueItemIds(boardItems, overdueDateColumnId);
 
-  const boardIcon = (board.icon as string | null) ?? DEFAULT_BOARD_ICON;
-  const boardColor = (board.color as string | null) ?? avatarColorFor(board.name);
+  const rawBoardLogo = board.icon as string | null;
+  const boardLogo = rawBoardLogo?.startsWith("http") ? rawBoardLogo : null;
 
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-6 px-6 py-8 lg:px-10 xl:px-14">
@@ -130,10 +121,14 @@ export default async function BoardPage({
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base"
-            style={{ backgroundColor: `${boardColor}33` }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg text-sm font-semibold text-white"
+            style={{ backgroundColor: boardLogo ? undefined : avatarColorFor(board.name) }}
           >
-            {boardIcon}
+            {boardLogo ? (
+              <Image src={boardLogo} alt="" width={32} height={32} className="h-full w-full object-cover" />
+            ) : (
+              board.name.slice(0, 1).toUpperCase()
+            )}
           </span>
           <h1 className="text-2xl font-semibold tracking-tight">{board.name}</h1>
         </div>
@@ -144,42 +139,21 @@ export default async function BoardPage({
         />
       </div>
 
-      <ViewToggle hasDateColumn={Boolean(dateColumn)} />
+      <BoardViewSwitcher
+        boardId={board.id}
+        workspaceSlug={workspaceSlug}
+        groups={groups ?? []}
+        columns={boardColumns}
+        items={boardItems}
+        overdueItemIds={overdueItemIds}
+        dateColumn={dateColumn}
+        dashboards={boardDashboards}
+        widgets={boardWidgets}
+      />
 
-      {showDashboard ? (
-        <DashboardView
-          boardId={board.id}
-          dashboards={boardDashboards}
-          widgets={boardWidgets}
-          columns={boardColumns}
-          items={boardItems}
-        />
-      ) : showCalendar ? (
-        <CalendarView
-          boardId={board.id}
-          workspaceSlug={workspaceSlug}
-          dateColumn={dateColumn}
-          items={boardItems}
-          groups={groups ?? []}
-          columns={boardColumns}
-        />
-      ) : (
-        <BoardContent
-          boardId={board.id}
-          workspaceSlug={workspaceSlug}
-          groups={groups ?? []}
-          columns={boardColumns}
-          items={boardItems}
-          overdueItemIds={overdueItemIds}
-        />
-      )}
-
-      {!showDashboard && (
-        <div className="flex flex-wrap items-center gap-2">
-          <CreateGroupForm boardId={board.id} />
-          <CreateColumnForm boardId={board.id} />
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <CreateGroupForm boardId={board.id} />
+      </div>
 
       <div className="flex items-center justify-end gap-1 border-t border-border pt-3">
         <BoardSettingsDialog

@@ -143,7 +143,9 @@ export async function renameColumn(columnId: number, name: string) {
 // string value vs. a link column's {url,label} object), so this clears
 // values[columnId] across all of the board's items whenever the type
 // actually changes — better an empty cell than a value the new type's
-// renderer/editor can't parse.
+// renderer/editor can't parse. When the type is unchanged, this only
+// updates config (e.g. status/format/select option edits) and never
+// touches item values.
 export async function changeColumnType(
   boardId: number,
   columnId: number,
@@ -153,30 +155,48 @@ export async function changeColumnType(
   const supabase = await createClient();
 
   const parsedType = columnFieldsSchema.shape.type.parse(type);
-  const config = (OPTION_BASED_COLUMN_TYPES as readonly string[]).includes(parsedType)
-    ? { options: statusOptions ?? [] }
-    : {};
+  const isOptionBased = (OPTION_BASED_COLUMN_TYPES as readonly string[]).includes(parsedType);
+  const config = isOptionBased ? { options: statusOptions ?? [] } : {};
 
   const { data: existing } = await supabase.from("columns").select("type").eq("id", columnId).single();
   if (!existing) throw new Error("Coluna não encontrada.");
 
+  const typeChanged = existing.type !== parsedType;
+
   const { error: updateError } = await supabase
     .from("columns")
-    .update({ type: parsedType, config })
+    .update(typeChanged || isOptionBased ? { type: parsedType, config } : { type: parsedType })
     .eq("id", columnId);
   if (updateError) throw new Error(updateError.message);
 
-  if (existing.type !== parsedType) {
-    const { data: items } = await supabase.from("items").select("id, values").eq("board_id", boardId);
-    for (const item of items ?? []) {
-      const values = { ...(item.values as Record<string, unknown>) };
-      if (columnId in values) {
-        delete values[columnId];
-        await supabase.from("items").update({ values }).eq("id", item.id);
-      }
-    }
+  if (typeChanged) {
+    const { data: items } = await supabase
+      .from("items")
+      .select("id, values")
+      .eq("board_id", boardId)
+      .not("values", "eq", "{}");
+
+    await Promise.all(
+      (items ?? [])
+        .filter((item) => columnId in (item.values as Record<string, unknown>))
+        .map((item) => {
+          const values = { ...(item.values as Record<string, unknown>) };
+          delete values[columnId];
+          return supabase.from("items").update({ values }).eq("id", item.id);
+        }),
+    );
   }
 
+  revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
+}
+
+export async function setColumnWidth(columnId: number, width: number) {
+  const supabase = await createClient();
+  const { data: column } = await supabase.from("columns").select("config").eq("id", columnId).single();
+  if (!column) throw new Error("Coluna não encontrada.");
+  const config = { ...(column.config as Record<string, unknown>), width };
+  const { error } = await supabase.from("columns").update({ config }).eq("id", columnId);
+  if (error) throw new Error(error.message);
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
 }
 

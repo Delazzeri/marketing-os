@@ -54,8 +54,6 @@ import { InlineEditableText } from "@/components/layout/InlineEditableText";
 import { BoardIconPicker } from "@/components/layout/BoardIconPicker";
 import { ColorSwatchPicker } from "@/components/columns/ColorSwatchPicker";
 import { COLOR_PALETTE } from "@/lib/column-types/color-palette";
-import { DEFAULT_BOARD_ICON } from "@/lib/board-icons";
-import { avatarColorFor } from "@/lib/avatar-color";
 import { cn } from "@/lib/utils";
 import {
   quickCreateBoard,
@@ -102,7 +100,6 @@ function BoardRow({
   });
   const href = `/${workspaceSlug}/boards/${board.id}`;
   const isActive = pathname.startsWith(href);
-  const iconColor = board.color ?? avatarColorFor(board.name);
 
   return (
     <SidebarMenuItem
@@ -122,11 +119,12 @@ function BoardRow({
         <GripVertical className="h-3.5 w-3.5" />
       </span>
       <BoardIconPicker
-        value={board.icon}
-        color={iconColor}
-        onChange={(icon) =>
+        boardId={board.id}
+        boardName={board.name}
+        logoUrl={board.icon}
+        onChange={(logoUrl) =>
           startTransition(async () => {
-            await setBoardIcon(board.id, icon);
+            await setBoardIcon(board.id, logoUrl);
             router.refresh();
           })
         }
@@ -533,7 +531,3 @@ export function AppSidebar({
     </Sidebar>
   );
 }
-
-// Re-exported so callers building the icon/board default values don't need
-// to reach into lib/board-icons directly for the fallback glyph.
-export { DEFAULT_BOARD_ICON };

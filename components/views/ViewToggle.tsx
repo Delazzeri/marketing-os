@@ -1,32 +1,20 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function ViewToggle({
   hasDateColumn,
   showDashboardTab = true,
+  view,
+  onViewChange,
 }: {
   hasDateColumn: boolean;
   showDashboardTab?: boolean;
+  view: string;
+  onViewChange: (view: "table" | "calendar" | "dashboard") => void;
 }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const rawView = searchParams.get("view");
-  const active = rawView === "calendar" || rawView === "dashboard" ? rawView : "table";
-
-  function setView(view: string) {
-    const params = new URLSearchParams(searchParams);
-    if (view === "table") {
-      params.delete("view");
-    } else {
-      params.set("view", view);
-    }
-    router.push(`?${params.toString()}`);
-  }
-
   return (
-    <Tabs value={active} onValueChange={setView}>
+    <Tabs value={view} onValueChange={(value) => onViewChange(value as "table" | "calendar" | "dashboard")}>
       <TabsList>
         <TabsTrigger value="table">Tabela</TabsTrigger>
         <TabsTrigger

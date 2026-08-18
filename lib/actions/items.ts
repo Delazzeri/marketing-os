@@ -60,6 +60,16 @@ export async function setGroupColor(groupId: number, color: string) {
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
 }
 
+export async function reorderGroups(orderedGroupIds: number[]) {
+  const supabase = await createClient();
+
+  await Promise.all(
+    orderedGroupIds.map((id, index) => supabase.from("groups").update({ position: index }).eq("id", id)),
+  );
+
+  revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
+}
+
 export async function createItem(
   boardId: number,
   _prevState: ItemFormState,

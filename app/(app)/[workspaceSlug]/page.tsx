@@ -1,9 +1,6 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CreateBoardForm } from "@/components/boards/CreateBoardForm";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { LayoutGrid } from "lucide-react";
 
 export default async function WorkspacePage({
   params,
@@ -21,34 +18,21 @@ export default async function WorkspacePage({
 
   if (!workspace) notFound();
 
-  const { data: boards } = await supabase
+  const { data: firstBoard } = await supabase
     .from("boards")
-    .select("id, name, slug")
+    .select("id")
     .eq("workspace_id", workspace.id)
-    .order("position", { ascending: true });
+    .order("position", { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
+  if (firstBoard) redirect(`/${workspaceSlug}/boards/${firstBoard.id}`);
+
+  // No boards yet — only reachable state here is "create the first one".
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
       <h1 className="text-xl font-semibold">{workspace.name}</h1>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {(boards ?? []).map((board) => (
-          <Link key={board.id} href={`/${workspaceSlug}/boards/${board.id}`}>
-            <Card className="transition-colors hover:bg-muted/50">
-              <CardHeader className="flex-row items-center gap-3 space-y-0">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <LayoutGrid className="h-4 w-4" />
-                </div>
-                <CardTitle>{board.name}</CardTitle>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
-        {(boards ?? []).length === 0 && (
-          <p className="text-sm text-muted-foreground">Nenhum board ainda.</p>
-        )}
-      </div>
-
+      <p className="text-sm text-muted-foreground">Nenhum quadro ainda. Crie o primeiro:</p>
       <CreateBoardForm workspaceSlug={workspaceSlug} />
     </div>
   );

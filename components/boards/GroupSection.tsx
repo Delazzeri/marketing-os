@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { renameGroup, setGroupColor } from "@/lib/actions/items";
 import { BoardTable } from "@/components/boards/BoardTable";
 import { CreateItemForm } from "@/components/items/CreateItemForm";
@@ -9,7 +11,7 @@ import { InlineEditableText } from "@/components/layout/InlineEditableText";
 import { ColorSwatchPicker } from "@/components/columns/ColorSwatchPicker";
 import { COLOR_PALETTE } from "@/lib/column-types/color-palette";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, GripVertical } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 interface ColumnData {
@@ -80,13 +82,29 @@ export function GroupSection({
   const [collapsed, setCollapsed] = useState(false);
   const color = group.color ?? COLOR_PALETTE[0];
   const statusColumn = columns.find((column) => column.type === "status");
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `group-${group.id}`,
+  });
 
   return (
     <div
+      ref={setNodeRef}
+      style={{
+        borderLeft: `3px solid ${color}`,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
       className="flex flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card pl-3 shadow-sm"
-      style={{ borderLeft: `3px solid ${color}` }}
     >
       <div className={`flex items-center gap-2 pr-3 pt-3 ${collapsed ? "pb-3" : ""}`}>
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab select-none text-muted-foreground/40 hover:text-muted-foreground"
+        >
+          <GripVertical className="h-4 w-4" />
+        </span>
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
