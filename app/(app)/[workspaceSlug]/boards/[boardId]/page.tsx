@@ -120,7 +120,7 @@ export default async function BoardPage({
   const boardColor = (board.color as string | null) ?? avatarColorFor(board.name);
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-8">
+    <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-6 px-6 py-8 lg:px-10 xl:px-14">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link

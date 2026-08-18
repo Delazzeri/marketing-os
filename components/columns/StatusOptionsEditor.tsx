@@ -17,29 +17,40 @@ interface LabeledOption {
   color: string;
 }
 
-export function StatusOptionsEditor() {
-  const [options, setOptions] = useState<LabeledOption[]>([]);
+export function StatusOptionsEditor({
+  initial,
+  onCommit,
+}: {
+  initial?: LabeledOption[];
+  onCommit?: (options: LabeledOption[]) => void;
+}) {
+  const [options, setOptions] = useState<LabeledOption[]>(initial ?? []);
+
+  function commit(next: LabeledOption[]) {
+    setOptions(next);
+    onCommit?.(next);
+  }
 
   function addOption() {
     const color = COLOR_PALETTE[options.length % COLOR_PALETTE.length];
-    setOptions([...options, { label: "", color }]);
+    commit([...options, { label: "", color }]);
   }
 
   function updateLabel(index: number, label: string) {
-    setOptions(options.map((option, i) => (i === index ? { ...option, label } : option)));
+    commit(options.map((option, i) => (i === index ? { ...option, label } : option)));
   }
 
   function updateColor(index: number, color: string) {
-    setOptions(options.map((option, i) => (i === index ? { ...option, color } : option)));
+    commit(options.map((option, i) => (i === index ? { ...option, color } : option)));
   }
 
   function removeOption(index: number) {
-    setOptions(options.filter((_, i) => i !== index));
+    commit(options.filter((_, i) => i !== index));
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <input type="hidden" name="statusOptions" value={JSON.stringify(options)} />
+      {!onCommit && <input type="hidden" name="statusOptions" value={JSON.stringify(options)} />}
       {options.map((option, index) => (
         <div key={index} className="flex items-center gap-2">
           <ColorSwatchPicker value={option.color} onChange={(color) => updateColor(index, color)} />

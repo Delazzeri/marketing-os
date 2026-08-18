@@ -19,8 +19,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditableCell } from "@/components/columns/EditableCell";
+import { ColumnHeaderMenu } from "@/components/columns/ColumnHeaderMenu";
 import { deleteItem, deleteItems, reorderItems } from "@/lib/actions/items";
-import { deleteColumn, reorderColumns } from "@/lib/actions/columns";
+import { reorderColumns } from "@/lib/actions/columns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,8 +41,7 @@ interface ItemData {
   values: Record<string, unknown>;
 }
 
-function SortableColumnHeader({ column }: { column: ColumnData }) {
-  const [, startTransition] = useTransition();
+function SortableColumnHeader({ boardId, column }: { boardId: number; column: ColumnData }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `column-${column.id}`,
   });
@@ -50,23 +50,14 @@ function SortableColumnHeader({ column }: { column: ColumnData }) {
     <th
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="min-w-[160px] px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
+      className="group min-w-[160px] px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
     >
       <div className="flex items-center gap-1.5">
         <span {...attributes} {...listeners} className="cursor-grab select-none text-muted-foreground/50">
           <GripVertical className="h-4 w-4" />
         </span>
         {column.name}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          onClick={() => startTransition(() => deleteColumn(column.id))}
-          className="ml-auto text-muted-foreground/50 hover:text-destructive"
-          title="Excluir coluna"
-        >
-          <X />
-        </Button>
+        <ColumnHeaderMenu boardId={boardId} column={column} />
       </div>
     </th>
   );
@@ -248,7 +239,7 @@ export function BoardTable({
                   strategy={horizontalListSortingStrategy}
                 >
                   {orderedColumns.map((column) => (
-                    <SortableColumnHeader key={column.id} column={column} />
+                    <SortableColumnHeader key={column.id} boardId={boardId} column={column} />
                   ))}
                 </SortableContext>
               </tr>

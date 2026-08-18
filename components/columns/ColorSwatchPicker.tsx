@@ -7,14 +7,19 @@ import { cn } from "@/lib/utils";
 export function ColorSwatchPicker({
   value,
   onChange,
+  size = "default",
 }: {
   value: string;
   onChange: (color: string) => void;
+  size?: "default" | "sm";
 }) {
   return (
     <Popover>
       <PopoverTrigger
-        className="h-7 w-7 shrink-0 rounded-full border border-border"
+        className={cn(
+          "shrink-0 rounded-full border border-border",
+          size === "sm" ? "h-3 w-3" : "h-4 w-4",
+        )}
         style={{ backgroundColor: value }}
         aria-label="Escolher cor"
       />

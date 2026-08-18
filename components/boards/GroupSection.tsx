@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { renameGroup, setGroupColor } from "@/lib/actions/items";
 import { BoardTable } from "@/components/boards/BoardTable";
 import { CreateItemForm } from "@/components/items/CreateItemForm";
@@ -9,6 +9,7 @@ import { InlineEditableText } from "@/components/layout/InlineEditableText";
 import { ColorSwatchPicker } from "@/components/columns/ColorSwatchPicker";
 import { COLOR_PALETTE } from "@/lib/column-types/color-palette";
 import { Badge } from "@/components/ui/badge";
+import { ChevronRight } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 interface ColumnData {
@@ -76,6 +77,7 @@ export function GroupSection({
   overdueItemIds?: Set<number>;
 }) {
   const [, startTransition] = useTransition();
+  const [collapsed, setCollapsed] = useState(false);
   const color = group.color ?? COLOR_PALETTE[0];
   const statusColumn = columns.find((column) => column.type === "status");
 
@@ -84,7 +86,15 @@ export function GroupSection({
       className="flex flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card pl-3 shadow-sm"
       style={{ borderLeft: `3px solid ${color}` }}
     >
-      <div className="flex items-center gap-2 pt-3 pr-3">
+      <div className={`flex items-center gap-2 pr-3 pt-3 ${collapsed ? "pb-3" : ""}`}>
+        <button
+          type="button"
+          onClick={() => setCollapsed((prev) => !prev)}
+          className="text-muted-foreground/60 hover:text-foreground"
+          aria-label={collapsed ? "Expandir grupo" : "Minimizar grupo"}
+        >
+          <ChevronRight className={`h-4 w-4 transition-transform ${collapsed ? "" : "rotate-90"}`} />
+        </button>
         <ColorSwatchPicker
           value={color}
           onChange={(next) => startTransition(() => setGroupColor(group.id, next))}
@@ -95,24 +105,29 @@ export function GroupSection({
           className="text-sm font-semibold"
         />
         <Badge variant="secondary">{items.length}</Badge>
+        {collapsed && <GroupFooterProgress items={items} statusColumn={statusColumn} />}
         <DeleteGroupButton groupId={group.id} groupName={group.name} />
       </div>
 
-      <div className="min-w-0 pr-3">
-        <BoardTable
-          key={`${columns.map((c) => c.id).join(",")}|${items.map((i) => i.id).join(",")}`}
-          boardId={boardId}
-          workspaceSlug={workspaceSlug}
-          columns={columns}
-          items={items}
-          overdueItemIds={overdueItemIds}
-        />
-      </div>
+      {!collapsed && (
+        <>
+          <div className="min-w-0 pr-3">
+            <BoardTable
+              key={`${columns.map((c) => c.id).join(",")}|${items.map((i) => i.id).join(",")}`}
+              boardId={boardId}
+              workspaceSlug={workspaceSlug}
+              columns={columns}
+              items={items}
+              overdueItemIds={overdueItemIds}
+            />
+          </div>
 
-      <div className="flex items-center gap-2 pr-3 pb-3">
-        <CreateItemForm boardId={boardId} groupId={group.id} />
-        <GroupFooterProgress items={items} statusColumn={statusColumn} />
-      </div>
+          <div className="flex items-center gap-2 pr-3 pb-3">
+            <CreateItemForm boardId={boardId} groupId={group.id} />
+            <GroupFooterProgress items={items} statusColumn={statusColumn} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

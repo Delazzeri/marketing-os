@@ -15,7 +15,7 @@ export function BoardIconPicker({
   return (
     <Popover>
       <PopoverTrigger
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-sm"
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-xs"
         style={{ backgroundColor: color }}
         aria-label="Trocar ícone"
       >

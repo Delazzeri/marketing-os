@@ -129,6 +129,57 @@ export async function deleteColumn(columnId: number) {
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
 }
 
+export async function renameColumn(columnId: number, name: string) {
+  const supabase = await createClient();
+  const trimmedName = name.trim();
+  if (!trimmedName) throw new Error("Nome obrigatório.");
+  const { error } = await supabase.from("columns").update({ name: trimmedName }).eq("id", columnId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
+}
+
+// Changing a column's type can make every item's stored value for it
+// incompatible with the new type's schema (e.g. a status column's plain
+// string value vs. a link column's {url,label} object), so this clears
+// values[columnId] across all of the board's items whenever the type
+// actually changes — better an empty cell than a value the new type's
+// renderer/editor can't parse.
+export async function changeColumnType(
+  boardId: number,
+  columnId: number,
+  type: string,
+  statusOptions?: { label: string; color: string }[],
+) {
+  const supabase = await createClient();
+
+  const parsedType = columnFieldsSchema.shape.type.parse(type);
+  const config = (OPTION_BASED_COLUMN_TYPES as readonly string[]).includes(parsedType)
+    ? { options: statusOptions ?? [] }
+    : {};
+
+  const { data: existing } = await supabase.from("columns").select("type").eq("id", columnId).single();
+  if (!existing) throw new Error("Coluna não encontrada.");
+
+  const { error: updateError } = await supabase
+    .from("columns")
+    .update({ type: parsedType, config })
+    .eq("id", columnId);
+  if (updateError) throw new Error(updateError.message);
+
+  if (existing.type !== parsedType) {
+    const { data: items } = await supabase.from("items").select("id, values").eq("board_id", boardId);
+    for (const item of items ?? []) {
+      const values = { ...(item.values as Record<string, unknown>) };
+      if (columnId in values) {
+        delete values[columnId];
+        await supabase.from("items").update({ values }).eq("id", item.id);
+      }
+    }
+  }
+
+  revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
+}
+
 export async function reorderColumns(orderedColumnIds: number[]) {
   const supabase = await createClient();
 

@@ -110,13 +110,14 @@ function BoardRow({
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
       className={cn(
         "group/board-row relative flex items-center gap-1 border-l-2",
+        "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-l-0",
         isActive ? "border-primary" : "border-transparent",
       )}
     >
       <span
         {...attributes}
         {...listeners}
-        className="cursor-grab select-none text-sidebar-foreground/40 opacity-0 group-hover/board-row:opacity-100"
+        className="cursor-grab select-none text-sidebar-foreground/40 opacity-0 group-hover/board-row:opacity-100 group-data-[collapsible=icon]:hidden"
       >
         <GripVertical className="h-3.5 w-3.5" />
       </span>
@@ -130,7 +131,12 @@ function BoardRow({
           })
         }
       />
-      <SidebarMenuButton isActive={isActive} render={<Link href={href} />} className="min-w-0 flex-1">
+      <SidebarMenuButton
+        isActive={isActive}
+        tooltip={board.name}
+        render={<Link href={href} />}
+        className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden"
+      >
         <InlineEditableText
           value={board.name}
           onCommit={async (next) => {
@@ -142,7 +148,7 @@ function BoardRow({
       </SidebarMenuButton>
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="shrink-0 rounded-md p-1 text-sidebar-foreground/40 opacity-0 hover:bg-sidebar-accent group-hover/board-row:opacity-100"
+          className="shrink-0 rounded-md p-1 text-sidebar-foreground/40 opacity-0 hover:bg-sidebar-accent group-hover/board-row:opacity-100 group-data-[collapsible=icon]:hidden"
           aria-label="Opções do quadro"
         >
           <MoreHorizontal className="h-3.5 w-3.5" />
@@ -223,7 +229,7 @@ function FolderSection({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="flex flex-col gap-0.5"
+      className="flex flex-col gap-0.5 group-data-[collapsible=icon]:hidden"
     >
       <div className="group/folder-row flex items-center gap-1 px-1 py-1">
         <button
@@ -239,6 +245,7 @@ function FolderSection({
         </span>
         <ColorSwatchPicker
           value={folder.color ?? COLOR_PALETTE[0]}
+          size="sm"
           onChange={(color) =>
             startTransition(async () => {
               await setFolderColor(folder.id, color);
@@ -382,11 +389,16 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href={`/${workspaceSlug}`} />}>
+            <SidebarMenuButton
+              size="lg"
+              tooltip={workspaceName}
+              render={<Link href={`/${workspaceSlug}`} />}
+              className="group-data-[collapsible=icon]:justify-center"
+            >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-xs font-bold text-primary-foreground">
                 {workspaceName.slice(0, 1).toUpperCase()}
               </div>
-              <div className="flex min-w-0 flex-col">
+              <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
                 <span className="truncate text-sm font-semibold">{workspaceName}</span>
                 <span className="truncate text-xs text-sidebar-foreground/50">Workspace</span>
               </div>
@@ -424,7 +436,7 @@ export function AppSidebar({
               </div>
             </DndContext>
 
-            <div className="mt-2 flex flex-col gap-1">
+            <div className="mt-2 flex flex-col gap-1 group-data-[collapsible=icon]:items-center">
               {addingBoard ? (
                 <input
                   autoFocus
@@ -442,20 +454,22 @@ export function AppSidebar({
                     }
                   }}
                   placeholder="Nome do quadro"
-                  className="rounded-md border border-dashed border-sidebar-border bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-ring"
+                  className="rounded-md border border-dashed border-sidebar-border bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-ring group-data-[collapsible=icon]:hidden"
                 />
               ) : (
                 <button
                   type="button"
                   onClick={() => setAddingBoard(true)}
-                  className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                  title="Novo quadro"
+                  className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  Quadro
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  <span className="group-data-[collapsible=icon]:hidden">Quadro</span>
                 </button>
               )}
               {addingFolder ? (
                 <form
+                  className="group-data-[collapsible=icon]:hidden"
                   action={(formData) => {
                     setAddingFolder(false);
                     startTransition(async () => {
@@ -487,7 +501,8 @@ export function AppSidebar({
                 <button
                   type="button"
                   onClick={() => setAddingFolder(true)}
-                  className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                  title="Nova pasta"
+                  className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden"
                 >
                   <Folder className="h-3.5 w-3.5" />
                   Pasta
@@ -503,9 +518,11 @@ export function AppSidebar({
             <SidebarMenuButton
               isActive={pathname === `/${workspaceSlug}/settings`}
               render={<Link href={`/${workspaceSlug}/settings`} />}
+              tooltip="Configurações"
+              className="group-data-[collapsible=icon]:justify-center"
             >
               <Settings />
-              <span>Configurações</span>
+              <span className="group-data-[collapsible=icon]:hidden">Configurações</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

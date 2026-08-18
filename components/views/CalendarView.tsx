@@ -62,6 +62,7 @@ function DayCell({
   workspaceSlug,
   boardId,
   dateColumn,
+  statusColumn,
   firstGroupId,
   compact,
 }: {
@@ -71,6 +72,7 @@ function DayCell({
   workspaceSlug: string;
   boardId: number;
   dateColumn: ColumnData;
+  statusColumn: ColumnData | undefined;
   firstGroupId: number | null;
   compact: boolean;
 }) {
@@ -78,6 +80,15 @@ function DayCell({
   const [quickAdding, setQuickAdding] = useState(false);
   const [title, setTitle] = useState("");
   const Badge = columnTypeRegistry[dateColumn.type].renderCalendarBadge;
+  const statusOptions =
+    (statusColumn?.config.options as { label: string; color: string }[] | undefined) ?? [];
+
+  function statusColorFor(item: ItemData): string | null {
+    if (!statusColumn) return null;
+    const value = item.values[statusColumn.id];
+    if (typeof value !== "string") return null;
+    return statusOptions.find((option) => option.label === value)?.color ?? null;
+  }
 
   function submitQuickAdd() {
     const trimmed = title.trim();
@@ -102,16 +113,22 @@ function DayCell({
         {day.getDate()}
       </span>
       <div className="mt-1 flex flex-col gap-0.5">
-        {dayItems.map((item) => (
-          <Link
-            key={item.id}
-            href={`/${workspaceSlug}/boards/${boardId}/items/${item.id}`}
-            className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-xs hover:bg-accent"
-          >
-            {Badge && <Badge value={item.values[dateColumn.id] as never} config={dateColumn.config} />}
-            <span className="truncate">{item.title}</span>
-          </Link>
-        ))}
+        {dayItems.map((item) => {
+          const color = statusColorFor(item);
+          return (
+            <Link
+              key={item.id}
+              href={`/${workspaceSlug}/boards/${boardId}/items/${item.id}`}
+              className={`flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-xs font-medium ${
+                color ? "text-white hover:opacity-90" : "hover:bg-accent"
+              }`}
+              style={color ? { backgroundColor: color } : undefined}
+            >
+              {!color && Badge && <Badge value={item.values[dateColumn.id] as never} config={dateColumn.config} />}
+              <span className="truncate">{item.title}</span>
+            </Link>
+          );
+        })}
         {quickAdding && (
           <input
             autoFocus
@@ -239,6 +256,7 @@ export function CalendarView({
                 workspaceSlug={workspaceSlug}
                 boardId={boardId}
                 dateColumn={dateColumn}
+                statusColumn={statusColumn}
                 firstGroupId={firstGroupId}
                 compact={mode !== "month"}
               />
