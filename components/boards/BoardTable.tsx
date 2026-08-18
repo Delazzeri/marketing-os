@@ -19,11 +19,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { EditableCell } from "@/components/columns/EditableCell";
-import { deleteItem, reorderItems } from "@/lib/actions/items";
+import { deleteItem, deleteItems, reorderItems } from "@/lib/actions/items";
 import { deleteColumn, reorderColumns } from "@/lib/actions/columns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { GripVertical, X, Trash2 } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 interface ColumnData {
@@ -77,12 +78,16 @@ function SortableItemRow({
   workspaceSlug,
   boardId,
   overdue,
+  selected,
+  onSelectChange,
 }: {
   item: ItemData;
   columns: ColumnData[];
   workspaceSlug: string;
   boardId: number;
   overdue?: boolean;
+  selected: boolean;
+  onSelectChange: (checked: boolean) => void;
 }) {
   const [, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -95,6 +100,13 @@ function SortableItemRow({
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
       className="group border-b border-border/60 last:border-0 hover:bg-muted/40"
     >
+      <td className="w-8 px-2 py-1.5">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={(checked) => onSelectChange(checked === true)}
+          aria-label={`Selecionar ${item.title}`}
+        />
+      </td>
       <td className="px-3 py-1.5">
         <div className="flex items-center gap-1.5">
           <span {...attributes} {...listeners} className="cursor-grab select-none text-muted-foreground/50">
@@ -153,9 +165,32 @@ export function BoardTable({
 }) {
   const [orderedColumns, setOrderedColumns] = useState(columns);
   const [orderedItems, setOrderedItems] = useState(items);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [, startTransition] = useTransition();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const dndId = useId();
+
+  const allSelected = orderedItems.length > 0 && orderedItems.every((item) => selectedIds.has(item.id));
+  const someSelected = selectedIds.size > 0;
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds(checked ? new Set(orderedItems.map((item) => item.id)) : new Set());
+  }
+
+  function toggleSelect(itemId: number, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(itemId);
+      else next.delete(itemId);
+      return next;
+    });
+  }
+
+  function handleDeleteSelected() {
+    const ids = Array.from(selectedIds);
+    setSelectedIds(new Set());
+    startTransition(() => deleteItems(ids));
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -183,41 +218,61 @@ export function BoardTable({
   }
 
   return (
-    <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/50">
-              <th className="min-w-[200px] px-3 py-2 text-left font-medium text-muted-foreground">Item</th>
+    <div className="flex flex-col gap-2">
+      {someSelected && (
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-3 py-1.5">
+          <span className="text-xs text-muted-foreground">{selectedIds.size} selecionado(s)</span>
+          <Button type="button" variant="destructive" size="sm" onClick={handleDeleteSelected}>
+            <Trash2 />
+            Apagar selecionados
+          </Button>
+        </div>
+      )}
+      <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/50">
+                <th className="w-8 px-2 py-2">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                    aria-label="Selecionar todos"
+                  />
+                </th>
+                <th className="min-w-[200px] px-3 py-2 text-left font-medium text-muted-foreground">Item</th>
+                <SortableContext
+                  items={orderedColumns.map((c) => `column-${c.id}`)}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  {orderedColumns.map((column) => (
+                    <SortableColumnHeader key={column.id} column={column} />
+                  ))}
+                </SortableContext>
+              </tr>
+            </thead>
+            <tbody>
               <SortableContext
-                items={orderedColumns.map((c) => `column-${c.id}`)}
-                strategy={horizontalListSortingStrategy}
+                items={orderedItems.map((i) => `item-${i.id}`)}
+                strategy={verticalListSortingStrategy}
               >
-                {orderedColumns.map((column) => (
-                  <SortableColumnHeader key={column.id} column={column} />
+                {orderedItems.map((item) => (
+                  <SortableItemRow
+                    key={item.id}
+                    item={item}
+                    columns={orderedColumns}
+                    workspaceSlug={workspaceSlug}
+                    boardId={boardId}
+                    overdue={overdueItemIds?.has(item.id)}
+                    selected={selectedIds.has(item.id)}
+                    onSelectChange={(checked) => toggleSelect(item.id, checked)}
+                  />
                 ))}
               </SortableContext>
-            </tr>
-          </thead>
-          <tbody>
-            <SortableContext
-              items={orderedItems.map((i) => `item-${i.id}`)}
-              strategy={verticalListSortingStrategy}
-            >
-              {orderedItems.map((item) => (
-                <SortableItemRow
-                  key={item.id}
-                  item={item}
-                  columns={orderedColumns}
-                  workspaceSlug={workspaceSlug}
-                  boardId={boardId}
-                  overdue={overdueItemIds?.has(item.id)}
-                />
-              ))}
-            </SortableContext>
-          </tbody>
-        </table>
-      </div>
-    </DndContext>
+            </tbody>
+          </table>
+        </div>
+      </DndContext>
+    </div>
   );
 }

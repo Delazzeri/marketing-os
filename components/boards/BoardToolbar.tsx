@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,12 +52,12 @@ export function BoardToolbar({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative w-full max-w-xs">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Buscar item..."
-          className="h-8 pl-8"
+          placeholder="Pesquisar"
+          className="h-8 rounded-full pl-8"
         />
       </div>
 
@@ -65,8 +65,8 @@ export function BoardToolbar({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button type="button" variant="outline" size="sm">
-                <SlidersHorizontal />
+              <Button type="button" variant="outline" size="sm" className="rounded-full">
+                <Filter />
                 Filtrar
                 {activeFilterCount > 0 && (
                   <span className="ml-1 rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
@@ -104,7 +104,7 @@ export function BoardToolbar({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button type="button" variant="outline" size="sm">
+              <Button type="button" variant="outline" size="sm" className="rounded-full">
                 <ArrowUpDown />
                 Ordenar
               </Button>

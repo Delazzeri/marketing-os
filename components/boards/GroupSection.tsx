@@ -25,31 +25,37 @@ interface ItemData {
   values: Record<string, unknown>;
 }
 
-function StatusSummary({ items, statusColumn }: { items: ItemData[]; statusColumn: ColumnData | undefined }) {
-  if (!statusColumn) return null;
+// Assumes any status column option literally named "Concluído" means done —
+// same heuristic lib/dashboard-widgets/battery.tsx uses, since there's no
+// separate "done" flag on status options in the schema.
+const DONE_LABEL = "Concluído";
+
+function GroupFooterProgress({ items, statusColumn }: { items: ItemData[]; statusColumn: ColumnData | undefined }) {
+  if (!statusColumn || items.length === 0) return null;
   const options = (statusColumn.config.options as { label: string; color: string }[] | undefined) ?? [];
-  if (options.length === 0 || items.length === 0) return null;
+  if (options.length === 0) return null;
 
   const counts = new Map<string, number>();
   for (const item of items) {
     const value = item.values[statusColumn.id];
     if (typeof value === "string") counts.set(value, (counts.get(value) ?? 0) + 1);
   }
-  const withCounts = options.filter((option) => (counts.get(option.label) ?? 0) > 0);
-  if (withCounts.length === 0) return null;
+  const segments = options.filter((option) => (counts.get(option.label) ?? 0) > 0);
+  const doneCount = counts.get(DONE_LABEL) ?? 0;
 
   return (
-    <div className="flex items-center gap-1 overflow-hidden rounded-full text-[10px] font-medium text-white">
-      {withCounts.map((option) => (
-        <span
-          key={option.label}
-          className="px-2 py-0.5"
-          style={{ backgroundColor: option.color }}
-          title={`${option.label}: ${counts.get(option.label)}`}
-        >
-          {counts.get(option.label)}
-        </span>
-      ))}
+    <div className="flex flex-1 items-center justify-end gap-2">
+      <div className="flex h-1.5 w-32 overflow-hidden rounded-full bg-muted">
+        {segments.map((option) => (
+          <span
+            key={option.label}
+            style={{ backgroundColor: option.color, width: `${((counts.get(option.label) ?? 0) / items.length) * 100}%` }}
+          />
+        ))}
+      </div>
+      <span className="text-xs text-muted-foreground">
+        {doneCount}/{items.length} concluídos
+      </span>
     </div>
   );
 }
@@ -87,7 +93,6 @@ export function GroupSection({
           className="text-sm font-semibold"
         />
         <Badge variant="secondary">{items.length}</Badge>
-        <StatusSummary items={items} statusColumn={statusColumn} />
         <DeleteGroupButton groupId={group.id} groupName={group.name} />
       </div>
 
@@ -108,6 +113,7 @@ export function GroupSection({
       <div className="flex items-center gap-2 pl-1">
         <span className="h-4 w-1 shrink-0 rounded-full" style={{ backgroundColor: color }} />
         <CreateItemForm boardId={boardId} groupId={group.id} />
+        <GroupFooterProgress items={items} statusColumn={statusColumn} />
       </div>
     </div>
   );

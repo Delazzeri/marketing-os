@@ -5,15 +5,18 @@ import { BOARD_ICONS, DEFAULT_BOARD_ICON } from "@/lib/board-icons";
 
 export function BoardIconPicker({
   value,
+  color,
   onChange,
 }: {
   value: string | null;
+  color: string;
   onChange: (icon: string) => void;
 }) {
   return (
     <Popover>
       <PopoverTrigger
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-sm hover:bg-sidebar-accent"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-sm"
+        style={{ backgroundColor: color }}
         aria-label="Trocar ícone"
       >
         {value ?? DEFAULT_BOARD_ICON}

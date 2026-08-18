@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type ReactElement } from "react";
 import { inviteMember, type InviteMemberFormState } from "@/lib/actions/workspace-members";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,20 @@ import { UserPlus } from "lucide-react";
 
 const initialState: InviteMemberFormState = {};
 
-export function InvitePersonModal({ workspaceId }: { workspaceId: number }) {
+const defaultTrigger = (
+  <Button type="button" variant="outline" size="sm">
+    <UserPlus />
+    Convidar pessoa
+  </Button>
+);
+
+export function InvitePersonModal({
+  workspaceId,
+  trigger = defaultTrigger,
+}: {
+  workspaceId: number;
+  trigger?: ReactElement;
+}) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(inviteMember.bind(null, workspaceId), initialState);
   const [wasPending, setWasPending] = useState(false);
@@ -25,14 +38,7 @@ export function InvitePersonModal({ workspaceId }: { workspaceId: number }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button type="button" variant="outline" size="sm">
-            <UserPlus />
-            Convidar pessoa
-          </Button>
-        }
-      />
+      <DialogTrigger render={trigger} />
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Convidar pessoa</DialogTitle>

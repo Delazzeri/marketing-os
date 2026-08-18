@@ -55,6 +55,8 @@ import { BoardIconPicker } from "@/components/layout/BoardIconPicker";
 import { ColorSwatchPicker } from "@/components/columns/ColorSwatchPicker";
 import { COLOR_PALETTE } from "@/lib/column-types/color-palette";
 import { DEFAULT_BOARD_ICON } from "@/lib/board-icons";
+import { avatarColorFor } from "@/lib/avatar-color";
+import { cn } from "@/lib/utils";
 import {
   quickCreateBoard,
   renameBoard,
@@ -100,12 +102,16 @@ function BoardRow({
   });
   const href = `/${workspaceSlug}/boards/${board.id}`;
   const isActive = pathname.startsWith(href);
+  const iconColor = board.color ?? avatarColorFor(board.name);
 
   return (
     <SidebarMenuItem
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="group/board-row relative flex items-center gap-1"
+      className={cn(
+        "group/board-row relative flex items-center gap-1 border-l-2",
+        isActive ? "border-primary" : "border-transparent",
+      )}
     >
       <span
         {...attributes}
@@ -116,6 +122,7 @@ function BoardRow({
       </span>
       <BoardIconPicker
         value={board.icon}
+        color={iconColor}
         onChange={(icon) =>
           startTransition(async () => {
             await setBoardIcon(board.id, icon);
@@ -376,10 +383,13 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href={`/${workspaceSlug}`} />}>
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-xs font-bold text-primary-foreground">
                 {workspaceName.slice(0, 1).toUpperCase()}
               </div>
-              <span className="truncate font-medium">{workspaceName}</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-semibold">{workspaceName}</span>
+                <span className="truncate text-xs text-sidebar-foreground/50">Workspace</span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

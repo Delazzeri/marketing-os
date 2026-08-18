@@ -154,6 +154,14 @@ export async function deleteItem(itemId: number) {
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
 }
 
+export async function deleteItems(itemIds: number[]) {
+  if (itemIds.length === 0) return;
+  const supabase = await createClient();
+  const { error } = await supabase.from("items").delete().in("id", itemIds);
+  if (error) throw new Error(error.message);
+  revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
+}
+
 export async function reorderItems(orderedItemIds: number[]) {
   const supabase = await createClient();
 
