@@ -200,6 +200,23 @@ export async function setColumnWidth(columnId: number, width: number) {
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
 }
 
+export async function reorderStatusOptions(columnId: number, orderedLabels: string[]) {
+  const supabase = await createClient();
+  const { data: column } = await supabase.from("columns").select("config").eq("id", columnId).single();
+  if (!column) throw new Error("Coluna não encontrada.");
+  const config = column.config as Record<string, unknown>;
+  const options = (config.options as { label: string; color: string }[] | undefined) ?? [];
+  const optionsByLabel = new Map(options.map((option) => [option.label, option]));
+  const reordered = orderedLabels.map((label) => optionsByLabel.get(label)).filter((option) => option !== undefined);
+  if (reordered.length !== options.length) throw new Error("Ordem de opções inválida.");
+  const { error } = await supabase
+    .from("columns")
+    .update({ config: { ...config, options: reordered } })
+    .eq("id", columnId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
+}
+
 export async function reorderColumns(orderedColumnIds: number[]) {
   const supabase = await createClient();
 

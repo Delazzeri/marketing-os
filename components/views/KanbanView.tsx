@@ -1,18 +1,27 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import {
   DndContext,
   closestCorners,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { updateItemValue } from "@/lib/actions/columns";
+import { updateItemValue, reorderStatusOptions } from "@/lib/actions/columns";
 import { Badge } from "@/components/ui/badge";
+import { GripVertical } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 interface ColumnData {
@@ -35,22 +44,58 @@ interface GroupData {
   color: string | null;
 }
 
+interface StatusOption {
+  label: string;
+  color: string;
+}
+
 const NO_STATUS = "__no_status__";
 
-function KanbanCard({ item, group }: { item: ItemData; group: GroupData | undefined }) {
+function KanbanCard({
+  item,
+  group,
+  workspaceSlug,
+  boardId,
+  canEdit,
+}: {
+  item: ItemData;
+  group: GroupData | undefined;
+  workspaceSlug?: string;
+  boardId?: number;
+  canEdit: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `kanban-item-${item.id}`,
+    disabled: !canEdit,
   });
 
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      className="flex cursor-grab flex-col gap-1.5 rounded-lg border border-border bg-card p-2.5 text-sm shadow-sm active:cursor-grabbing"
+      className="group flex flex-col gap-1.5 rounded-lg border border-border bg-card p-2.5 text-sm shadow-sm"
     >
-      <span className="truncate">{item.title}</span>
+      <div className="flex items-start gap-1.5">
+        {canEdit && (
+          <span
+            {...attributes}
+            {...listeners}
+            className="mt-0.5 shrink-0 cursor-grab select-none text-muted-foreground/40 opacity-0 group-hover:opacity-100 active:cursor-grabbing"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </span>
+        )}
+        {workspaceSlug && boardId ? (
+          <Link
+            href={`/${workspaceSlug}/boards/${boardId}/items/${item.id}`}
+            className="flex-1 truncate hover:underline"
+          >
+            {item.title}
+          </Link>
+        ) : (
+          <span className="flex-1 truncate">{item.title}</span>
+        )}
+      </div>
       {group && (
         <Badge
           variant="secondary"
@@ -70,28 +115,60 @@ function KanbanColumn({
   color,
   items,
   groups,
+  workspaceSlug,
+  boardId,
+  canEdit,
+  canReorderColumn,
 }: {
   id: string;
   label: string;
   color?: string;
   items: ItemData[];
   groups: GroupData[];
+  workspaceSlug?: string;
+  boardId?: number;
+  canEdit: boolean;
+  canReorderColumn: boolean;
 }) {
-  const { setNodeRef } = useSortable({ id: `kanban-column-${id}`, data: { isColumn: true, statusValue: id } });
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `kanban-column-${id}`, disabled: !canReorderColumn });
+  const { setNodeRef: setDroppableRef } = useDroppable({ id: `kanban-drop-${id}` });
 
   return (
-    <div className="flex w-64 shrink-0 flex-col gap-2 rounded-xl bg-muted/40 p-2.5">
+    <div
+      ref={setSortableRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      className="flex w-64 shrink-0 flex-col gap-2 rounded-xl bg-muted/40 p-2.5"
+    >
       <div className="flex items-center gap-1.5 px-1">
+        {canReorderColumn && (
+          <span {...attributes} {...listeners} className="cursor-grab select-none text-muted-foreground/40 active:cursor-grabbing">
+            <GripVertical className="h-3.5 w-3.5" />
+          </span>
+        )}
         {color && <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />}
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <Badge variant="secondary" className="ml-auto text-[10px]">
           {items.length}
         </Badge>
       </div>
-      <div ref={setNodeRef} className="flex min-h-[40px] flex-col gap-2">
+      <div ref={setDroppableRef} className="flex min-h-[70vh] flex-col gap-2">
         <SortableContext items={items.map((item) => `kanban-item-${item.id}`)} strategy={verticalListSortingStrategy}>
           {items.map((item) => (
-            <KanbanCard key={item.id} item={item} group={groups.find((g) => g.id === item.groupId)} />
+            <KanbanCard
+              key={item.id}
+              item={item}
+              group={groups.find((g) => g.id === item.groupId)}
+              workspaceSlug={workspaceSlug}
+              boardId={boardId}
+              canEdit={canEdit}
+            />
           ))}
         </SortableContext>
       </div>
@@ -100,11 +177,15 @@ function KanbanColumn({
 }
 
 export function KanbanView({
+  workspaceSlug,
+  boardId,
   groups,
   columns,
   items,
   canEdit = true,
 }: {
+  workspaceSlug?: string;
+  boardId?: number;
   groups: GroupData[];
   columns: ColumnData[];
   items: ItemData[];
@@ -118,6 +199,14 @@ export function KanbanView({
     setPrevItems(items);
     setOrderedItems(items);
   }
+  const initialOptions = ((statusColumn?.config.options as StatusOption[] | undefined) ?? []);
+  const [orderedOptions, setOrderedOptions] = useState(initialOptions);
+  const [prevOptionsKey, setPrevOptionsKey] = useState(initialOptions.map((o) => o.label).join("|"));
+  const optionsKey = initialOptions.map((o) => o.label).join("|");
+  if (optionsKey !== prevOptionsKey) {
+    setPrevOptionsKey(optionsKey);
+    setOrderedOptions(initialOptions);
+  }
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   if (!statusColumn) {
@@ -129,7 +218,6 @@ export function KanbanView({
   }
 
   const resolvedStatusColumn = statusColumn;
-  const options = (resolvedStatusColumn.config.options as { label: string; color: string }[] | undefined) ?? [];
 
   function itemsForStatus(statusValue: string | null) {
     return orderedItems.filter((item) => {
@@ -144,13 +232,27 @@ export function KanbanView({
     if (!over) return;
 
     const activeId = String(active.id);
+    const overId = String(over.id);
+
+    if (activeId.startsWith("kanban-column-") && overId.startsWith("kanban-column-")) {
+      const activeLabel = activeId.replace("kanban-column-", "");
+      const overLabel = overId.replace("kanban-column-", "");
+      if (activeLabel === overLabel) return;
+      const oldIndex = orderedOptions.findIndex((option) => option.label === activeLabel);
+      const newIndex = orderedOptions.findIndex((option) => option.label === overLabel);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const next = arrayMove(orderedOptions, oldIndex, newIndex);
+      setOrderedOptions(next);
+      startTransition(() => reorderStatusOptions(resolvedStatusColumn.id, next.map((option) => option.label)));
+      return;
+    }
+
     if (!activeId.startsWith("kanban-item-")) return;
     const itemId = Number(activeId.replace("kanban-item-", ""));
 
-    const overId = String(over.id);
     let targetStatus: string | null = null;
-    if (overId.startsWith("kanban-column-")) {
-      targetStatus = overId.replace("kanban-column-", "");
+    if (overId.startsWith("kanban-drop-")) {
+      targetStatus = overId.replace("kanban-drop-", "");
     } else if (overId.startsWith("kanban-item-")) {
       const overItemId = Number(overId.replace("kanban-item-", ""));
       const overItem = orderedItems.find((item) => item.id === overItemId);
@@ -178,19 +280,37 @@ export function KanbanView({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-      <div className="flex gap-3 overflow-x-auto pb-2">
-        {options.map((option) => (
+      <SortableContext
+        items={orderedOptions.map((option) => `kanban-column-${option.label}`)}
+        strategy={horizontalListSortingStrategy}
+      >
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {orderedOptions.map((option) => (
+            <KanbanColumn
+              key={option.label}
+              id={option.label}
+              label={option.label}
+              color={option.color}
+              items={itemsForStatus(option.label)}
+              groups={groups}
+              workspaceSlug={workspaceSlug}
+              boardId={boardId}
+              canEdit={canEdit}
+              canReorderColumn={canEdit}
+            />
+          ))}
           <KanbanColumn
-            key={option.label}
-            id={option.label}
-            label={option.label}
-            color={option.color}
-            items={itemsForStatus(option.label)}
+            id={NO_STATUS}
+            label="Sem status"
+            items={itemsForStatus(NO_STATUS)}
             groups={groups}
+            workspaceSlug={workspaceSlug}
+            boardId={boardId}
+            canEdit={canEdit}
+            canReorderColumn={false}
           />
-        ))}
-        <KanbanColumn id={NO_STATUS} label="Sem status" items={itemsForStatus(NO_STATUS)} groups={groups} />
-      </div>
+        </div>
+      </SortableContext>
     </DndContext>
   );
 }

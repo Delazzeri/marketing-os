@@ -102,7 +102,14 @@ export function BoardViewSwitcher({
       />
 
       {view === "kanban" ? (
-        <KanbanView groups={groups} columns={columns} items={items} canEdit={canEdit} />
+        <KanbanView
+          workspaceSlug={workspaceSlug}
+          boardId={boardId}
+          groups={groups}
+          columns={columns}
+          items={items}
+          canEdit={canEdit}
+        />
       ) : view === "dashboard" ? (
         <DashboardView
           boardId={boardId}
