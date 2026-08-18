@@ -6,7 +6,8 @@ import { WelcomeEditor } from "@/components/workspace/WelcomeEditor";
 import { getCurrentUserContext } from "@/lib/auth/roles";
 import { canManageTeam } from "@/lib/roles";
 import { avatarColorFor } from "@/lib/avatar-color";
-import { ExternalLink } from "lucide-react";
+import type { BoardType } from "@/lib/validation/boards";
+import { ExternalLink, SquarePen } from "lucide-react";
 
 export default async function WorkspacePage({
   params,
@@ -26,7 +27,7 @@ export default async function WorkspacePage({
 
   const { data: boards } = await supabase
     .from("boards")
-    .select("id, name, icon")
+    .select("id, name, icon, type")
     .eq("workspace_id", workspace.id)
     .order("position", { ascending: true });
 
@@ -79,6 +80,7 @@ export default async function WorkspacePage({
             {boards.map((board) => {
               const icon = board.icon as string | null;
               const isImageIcon = icon?.startsWith("http");
+              const isWhiteboard = (board.type as BoardType) === "whiteboard";
               return (
                 <Link
                   key={board.id}
@@ -86,10 +88,16 @@ export default async function WorkspacePage({
                   className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-muted"
                 >
                   <span
-                    className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md text-xs font-semibold text-white"
-                    style={{ backgroundColor: isImageIcon ? undefined : avatarColorFor(board.name) }}
+                    className={
+                      isWhiteboard
+                        ? "flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted"
+                        : "flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md text-xs font-semibold text-white"
+                    }
+                    style={isWhiteboard || isImageIcon ? undefined : { backgroundColor: avatarColorFor(board.name) }}
                   >
-                    {isImageIcon ? (
+                    {isWhiteboard ? (
+                      <SquarePen className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : isImageIcon ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={icon as string} alt="" className="h-full w-full object-cover" />
                     ) : (

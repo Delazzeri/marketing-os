@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BoardHeader } from "@/components/boards/BoardHeader";
 import { CreateGroupForm } from "@/components/boards/CreateGroupForm";
 import { BoardViewSwitcher } from "@/components/boards/BoardViewSwitcher";
+import { WhiteboardView } from "@/components/boards/WhiteboardView";
 import { PortalTokenPanel } from "@/components/portal/PortalTokenPanel";
 import { AutomationsPanel } from "@/components/automations/AutomationsPanel";
 import { BoardSettingsDialog } from "@/components/boards/BoardSettingsDialog";
@@ -13,6 +14,7 @@ import { getWorkspaceMembersWithEmail } from "@/lib/supabase/user-lookup";
 import { avatarColorFor } from "@/lib/avatar-color";
 import { getCurrentUserContext } from "@/lib/auth/roles";
 import { canWrite, canManageTeam as computeCanManageTeam } from "@/lib/roles";
+import { VIEW_KINDS, type BoardType, type ViewKind } from "@/lib/validation/boards";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Zap, Link2 } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
@@ -28,11 +30,64 @@ export default async function BoardPage({
 
   const { data: board } = await supabase
     .from("boards")
-    .select("id, name, workspace_id, icon, item_column_width")
+    .select("id, name, workspace_id, icon, item_column_width, type, view_order")
     .eq("id", boardId)
     .single();
 
   if (!board) notFound();
+
+  const { isAdmin, workspaceRole: currentUserRole } = await getCurrentUserContext(board.workspace_id as number);
+  const canEdit = canWrite(currentUserRole, isAdmin);
+
+  const rawBoardLogo = board.icon as string | null;
+  const boardLogo = rawBoardLogo?.startsWith("http") ? rawBoardLogo : null;
+  const boardType = board.type as BoardType;
+
+  if (boardType === "whiteboard") {
+    const [{ data: whiteboardNoteRows }, { data: whiteboardConnectionRows }] = await Promise.all([
+      supabase.from("whiteboard_notes").select("id, text, color, position_x, position_y").eq("board_id", board.id),
+      supabase.from("whiteboard_connections").select("id, from_note_id, to_note_id").eq("board_id", board.id),
+    ]);
+
+    const whiteboardNotes = (whiteboardNoteRows ?? []).map((note) => ({
+      id: note.id,
+      text: note.text,
+      color: note.color,
+      positionX: note.position_x as number,
+      positionY: note.position_y as number,
+    }));
+    const whiteboardConnections = (whiteboardConnectionRows ?? []).map((connection) => ({
+      id: connection.id,
+      fromNoteId: connection.from_note_id as number,
+      toNoteId: connection.to_note_id as number,
+    }));
+
+    return (
+      <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-6 px-6 py-8 lg:px-10 xl:px-14">
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/${workspaceSlug}`}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg text-sm font-semibold text-white"
+            style={{ backgroundColor: avatarColorFor(board.name) }}
+          >
+            {board.name.slice(0, 1).toUpperCase()}
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight">{board.name}</h1>
+        </div>
+        <WhiteboardView
+          boardId={board.id}
+          notes={whiteboardNotes}
+          connections={whiteboardConnections}
+          canEdit={canEdit}
+        />
+      </div>
+    );
+  }
 
   const [
     { data: groups },
@@ -40,8 +95,6 @@ export default async function BoardPage({
     { data: columns },
     { data: overdueAutomation },
     { data: dashboards },
-    { data: whiteboardNoteRows },
-    { data: whiteboardConnectionRows },
   ] = await Promise.all([
     supabase
       .from("groups")
@@ -66,20 +119,9 @@ export default async function BoardPage({
       .select("id, name, dashboard_widgets(id, type, config)")
       .eq("board_id", board.id)
       .order("position", { ascending: true }),
-    supabase
-      .from("whiteboard_notes")
-      .select("id, text, color, position_x, position_y")
-      .eq("board_id", board.id),
-    supabase
-      .from("whiteboard_connections")
-      .select("id, from_note_id, to_note_id")
-      .eq("board_id", board.id),
   ]);
 
   const members = await getWorkspaceMembersWithEmail(board.workspace_id as number);
-
-  const { isAdmin, workspaceRole: currentUserRole } = await getCurrentUserContext(board.workspace_id as number);
-  const canEdit = canWrite(currentUserRole, isAdmin);
   const canManageTeam = computeCanManageTeam(currentUserRole, isAdmin);
 
   const boardColumns = (columns ?? []).map((column) => ({
@@ -115,21 +157,10 @@ export default async function BoardPage({
     ?.dateColumnId;
   const overdueItemIds = computeOverdueItemIds(boardItems, overdueDateColumnId);
 
-  const whiteboardNotes = (whiteboardNoteRows ?? []).map((note) => ({
-    id: note.id,
-    text: note.text,
-    color: note.color,
-    positionX: note.position_x as number,
-    positionY: note.position_y as number,
-  }));
-  const whiteboardConnections = (whiteboardConnectionRows ?? []).map((connection) => ({
-    id: connection.id,
-    fromNoteId: connection.from_note_id as number,
-    toNoteId: connection.to_note_id as number,
-  }));
-
-  const rawBoardLogo = board.icon as string | null;
-  const boardLogo = rawBoardLogo?.startsWith("http") ? rawBoardLogo : null;
+  const rawViewOrder = (board.view_order as string[] | null) ?? [];
+  const viewOrder = (
+    rawViewOrder.length === VIEW_KINDS.length ? rawViewOrder : [...VIEW_KINDS]
+  ) as ViewKind[];
 
   return (
     <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-6 px-6 py-8 lg:px-10 xl:px-14">
@@ -173,8 +204,7 @@ export default async function BoardPage({
         dateColumn={dateColumn}
         dashboards={boardDashboards}
         widgets={boardWidgets}
-        whiteboardNotes={whiteboardNotes}
-        whiteboardConnections={whiteboardConnections}
+        viewOrder={viewOrder}
         itemColumnWidth={board.item_column_width as number | null}
         canEdit={canEdit}
       />

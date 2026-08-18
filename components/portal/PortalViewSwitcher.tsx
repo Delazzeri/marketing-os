@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { PortalTable } from "@/components/portal/PortalTable";
 import { PortalCalendar } from "@/components/portal/PortalCalendar";
+import { KanbanView } from "@/components/views/KanbanView";
 import { ViewToggle } from "@/components/views/ViewToggle";
 import type { ColumnType } from "@/lib/column-types/schemas";
+import { VIEW_KINDS, type ViewKind } from "@/lib/validation/boards";
 
 interface ColumnData {
   id: number;
@@ -26,6 +28,8 @@ interface GroupData {
   color: string | null;
 }
 
+const PORTAL_VIEW_ORDER = VIEW_KINDS.filter((kind) => kind !== "dashboard") as ViewKind[];
+
 export function PortalViewSwitcher({
   groups,
   columns,
@@ -37,19 +41,21 @@ export function PortalViewSwitcher({
   items: ItemData[];
   dateColumn: ColumnData | undefined;
 }) {
-  const [view, setView] = useState<"table" | "calendar" | "dashboard" | "whiteboard">("table");
+  const [view, setView] = useState<ViewKind>("table");
 
   return (
     <>
       <ViewToggle
         hasDateColumn={Boolean(dateColumn)}
         showDashboardTab={false}
-        showWhiteboardTab={false}
+        order={PORTAL_VIEW_ORDER}
         view={view}
         onViewChange={setView}
       />
 
-      {view === "calendar" && dateColumn ? (
+      {view === "kanban" ? (
+        <KanbanView groups={groups} columns={columns} items={items} canEdit={false} />
+      ) : view === "calendar" && dateColumn ? (
         <PortalCalendar dateColumn={dateColumn} items={items} />
       ) : (
         <div className="flex flex-col gap-8">

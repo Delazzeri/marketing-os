@@ -61,7 +61,7 @@ function StickyNote({ id, data }: NodeProps<{ text: string; color: string; canEd
           type="button"
           onClick={() => startTransition(() => deleteNote(noteId))}
           className="absolute top-1 right-1 rounded p-0.5 text-black/40 opacity-0 hover:bg-black/10 group-hover:opacity-100"
-          title="Excluir nota"
+          title="Excluir anotação"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -134,8 +134,24 @@ export function WhiteboardView({
     [connections],
   );
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // useNodesState/useEdgesState only seed their internal state once on
+  // mount — they don't resync when `notes`/`connections` change on
+  // re-render (e.g. after revalidatePath following createNote). Same
+  // render-time prop-resync pattern as BoardTable.tsx's useResizableWidth
+  // and BoardContent.tsx's prevGroups, instead of useEffect.
+  const [prevNotes, setPrevNotes] = useState(notes);
+  if (notes !== prevNotes) {
+    setPrevNotes(notes);
+    setNodes(initialNodes);
+  }
+  const [prevConnections, setPrevConnections] = useState(connections);
+  if (connections !== prevConnections) {
+    setPrevConnections(connections);
+    setEdges(initialEdges);
+  }
 
   const handleNodeDragStop = useCallback(
     (_event: unknown, node: Node) => {
@@ -184,7 +200,7 @@ export function WhiteboardView({
           className="absolute top-3 left-3 z-10"
         >
           <Plus />
-          Post-it
+          Anotação
         </Button>
       )}
       <ReactFlow

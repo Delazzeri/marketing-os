@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { boardFieldsSchema, folderFieldsSchema } from "@/lib/validation/boards";
+import {
+  boardFieldsSchema,
+  folderFieldsSchema,
+  quickCreateBoardFieldsSchema,
+  viewOrderSchema,
+  type BoardType,
+} from "@/lib/validation/boards";
 
 export type BoardFormState = { error?: string };
 export type FolderFormState = { error?: string };
@@ -65,14 +71,20 @@ export async function createBoard(
 }
 
 /**
- * Quick-create used by the sidebar "+ Quadro" affordance: takes only a name
+ * Quick-create used by the sidebar's "+ Quadro" dialog: takes a name + type
  * and derives a unique slug (appending -2, -3... on collision), unlike
  * createBoard's full form which requires the user to choose a slug.
  */
-export async function quickCreateBoard(workspaceSlug: string, name: string, folderId: number | null) {
+export async function quickCreateBoard(
+  workspaceSlug: string,
+  name: string,
+  folderId: number | null,
+  type: BoardType = "standard",
+) {
   const supabase = await createClient();
-  const trimmedName = name.trim();
-  if (!trimmedName) throw new Error("Nome obrigatório.");
+  const parsed = quickCreateBoardFieldsSchema.safeParse({ name, type });
+  if (!parsed.success) throw new Error("Nome obrigatório.");
+  const trimmedName = parsed.data.name.trim();
 
   const { data: workspace, error: workspaceError } = await supabase
     .from("workspaces")
@@ -89,6 +101,7 @@ export async function quickCreateBoard(workspaceSlug: string, name: string, fold
       name: trimmedName,
       slug,
       folder_id: folderId,
+      type: parsed.data.type,
     });
     if (!insertError) {
       revalidatePath("/[workspaceSlug]", "layout");
@@ -121,6 +134,15 @@ export async function setItemColumnWidth(boardId: number, width: number) {
   const supabase = await createClient();
   const roundedWidth = Math.round(width);
   const { error } = await supabase.from("boards").update({ item_column_width: roundedWidth }).eq("id", boardId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
+}
+
+export async function setBoardViewOrder(boardId: number, order: string[]) {
+  const supabase = await createClient();
+  const parsed = viewOrderSchema.safeParse(order);
+  if (!parsed.success) throw new Error("Ordem de visualizações inválida.");
+  const { error } = await supabase.from("boards").update({ view_order: parsed.data }).eq("id", boardId);
   if (error) throw new Error(error.message);
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
 }

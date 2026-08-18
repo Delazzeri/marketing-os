@@ -6,6 +6,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { getCurrentUserContext } from "@/lib/auth/roles";
 import { canWrite } from "@/lib/roles";
 import type { AppNotification } from "@/lib/types";
+import type { BoardType } from "@/lib/validation/boards";
 import type { ReactNode } from "react";
 
 export default async function WorkspaceLayout({
@@ -36,7 +37,7 @@ export default async function WorkspaceLayout({
   const [{ data: boards }, { data: folders }, { data: notifications }] = await Promise.all([
     supabase
       .from("boards")
-      .select("id, name, icon, color, folder_id")
+      .select("id, name, icon, color, folder_id, type")
       .eq("workspace_id", workspace.id)
       .order("position", { ascending: true }),
     supabase
@@ -60,6 +61,7 @@ export default async function WorkspaceLayout({
     icon: board.icon as string | null,
     color: board.color as string | null,
     folderId: board.folder_id as number | null,
+    type: board.type as BoardType,
   }));
 
   return (

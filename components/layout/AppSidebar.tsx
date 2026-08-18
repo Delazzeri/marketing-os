@@ -27,6 +27,7 @@ import {
   MoreHorizontal,
   Plus,
   Settings,
+  SquarePen,
   Trash2,
 } from "lucide-react";
 import {
@@ -54,11 +55,11 @@ import {
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { InlineEditableText } from "@/components/layout/InlineEditableText";
 import { BoardIconPicker } from "@/components/layout/BoardIconPicker";
+import { CreateBoardDialog } from "@/components/boards/CreateBoardDialog";
 import { ColorSwatchPicker } from "@/components/columns/ColorSwatchPicker";
 import { COLOR_PALETTE } from "@/lib/column-types/color-palette";
 import { cn } from "@/lib/utils";
 import {
-  quickCreateBoard,
   renameBoard,
   setBoardIcon,
   moveBoardToFolder,
@@ -70,6 +71,7 @@ import {
   deleteFolder,
   reorderFolders,
 } from "@/lib/actions/boards";
+import type { BoardType } from "@/lib/validation/boards";
 
 interface BoardSummary {
   id: number;
@@ -77,6 +79,7 @@ interface BoardSummary {
   icon: string | null;
   color: string | null;
   folderId: number | null;
+  type: BoardType;
 }
 
 interface FolderSummary {
@@ -126,7 +129,14 @@ function BoardRow({
           <GripVertical className="h-3.5 w-3.5" />
         </span>
       )}
-      {canEdit ? (
+      {board.type === "whiteboard" ? (
+        <span
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground"
+          title="Quadro branco"
+        >
+          <SquarePen className="h-3 w-3" />
+        </span>
+      ) : canEdit ? (
         <BoardIconPicker
           boardId={board.id}
           boardName={board.name}
@@ -372,9 +382,7 @@ export function AppSidebar({
     setFolders(initialFolders);
   }
   const [, startTransition] = useTransition();
-  const [addingBoard, setAddingBoard] = useState(false);
   const [addingFolder, setAddingFolder] = useState(false);
-  const [newBoardName, setNewBoardName] = useState("");
   const [newFolderName, setNewFolderName] = useState("");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const dndId = useId();
@@ -410,20 +418,6 @@ export function AppSidebar({
         router.refresh();
       });
     }
-  }
-
-  async function submitNewBoard() {
-    const name = newBoardName.trim();
-    if (!name) {
-      setAddingBoard(false);
-      return;
-    }
-    setAddingBoard(false);
-    setNewBoardName("");
-    startTransition(async () => {
-      await quickCreateBoard(workspaceSlug, name, null);
-      router.refresh();
-    });
   }
 
   return (
@@ -481,36 +475,20 @@ export function AppSidebar({
 
             {canEdit && (
               <div className="mt-2 flex flex-col gap-1 group-data-[collapsible=icon]:items-center">
-                {addingBoard ? (
-                  <input
-                    autoFocus
-                    value={newBoardName}
-                    onChange={(event) => setNewBoardName(event.target.value)}
-                    onBlur={submitNewBoard}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        submitNewBoard();
-                      }
-                      if (event.key === "Escape") {
-                        setAddingBoard(false);
-                        setNewBoardName("");
-                      }
-                    }}
-                    placeholder="Nome do quadro"
-                    className="rounded-md border border-dashed border-sidebar-border bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-ring group-data-[collapsible=icon]:hidden"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setAddingBoard(true)}
-                    title="Novo quadro"
-                    className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
-                  >
-                    <Plus className="h-3.5 w-3.5 shrink-0" />
-                    <span className="group-data-[collapsible=icon]:hidden">Quadro</span>
-                  </button>
-                )}
+                <CreateBoardDialog
+                  workspaceSlug={workspaceSlug}
+                  folderId={null}
+                  trigger={
+                    <button
+                      type="button"
+                      title="Novo quadro"
+                      className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+                    >
+                      <Plus className="h-3.5 w-3.5 shrink-0" />
+                      <span className="group-data-[collapsible=icon]:hidden">Quadro</span>
+                    </button>
+                  }
+                />
                 {addingFolder ? (
                   <form
                     className="group-data-[collapsible=icon]:hidden"
