@@ -1,7 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
-import { deleteWidget } from "@/lib/actions/dashboards";
 import { dashboardWidgetRegistry, type WidgetProps } from "@/lib/dashboard-widgets/registry";
 import type { DashboardWidgetType } from "@/lib/validation/dashboards";
 import { Button } from "@/components/ui/button";
@@ -12,13 +10,14 @@ export function WidgetCard({
   type,
   title,
   props,
+  onDelete,
 }: {
   widgetId: number;
   type: DashboardWidgetType;
   title: string;
   props: WidgetProps;
+  onDelete: (widgetId: number) => void;
 }) {
-  const [, startTransition] = useTransition();
   const definition = dashboardWidgetRegistry[type];
   const Widget = definition.render;
 
@@ -30,7 +29,7 @@ export function WidgetCard({
           type="button"
           variant="ghost"
           size="icon-xs"
-          onClick={() => startTransition(() => deleteWidget(widgetId))}
+          onClick={() => onDelete(widgetId)}
           className="text-muted-foreground/50 opacity-0 hover:text-destructive group-hover/widget:opacity-100"
           title="Remover widget"
         >

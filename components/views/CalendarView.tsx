@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { columnTypeRegistry } from "@/lib/column-types/registry";
 import type { ColumnType } from "@/lib/column-types/schemas";
 import { monthGridDays, toISODate, WEEKDAY_LABELS } from "@/lib/date-grid";
-import { quickCreateItemWithDate } from "@/lib/actions/items";
+import { CreateCalendarItemDialog } from "@/components/views/CreateCalendarItemDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -65,6 +65,7 @@ function DayCell({
   statusColumn,
   firstGroupId,
   compact,
+  onRequestCreate,
 }: {
   day: Date;
   inCurrentMonth: boolean;
@@ -75,10 +76,8 @@ function DayCell({
   statusColumn: ColumnData | undefined;
   firstGroupId: number | null;
   compact: boolean;
+  onRequestCreate: (day: Date) => void;
 }) {
-  const [, startTransition] = useTransition();
-  const [quickAdding, setQuickAdding] = useState(false);
-  const [title, setTitle] = useState("");
   const Badge = columnTypeRegistry[dateColumn.type].renderCalendarBadge;
   const statusOptions =
     (statusColumn?.config.options as { label: string; color: string }[] | undefined) ?? [];
@@ -90,23 +89,13 @@ function DayCell({
     return statusOptions.find((option) => option.label === value)?.color ?? null;
   }
 
-  function submitQuickAdd() {
-    const trimmed = title.trim();
-    setQuickAdding(false);
-    setTitle("");
-    if (!trimmed || !firstGroupId) return;
-    startTransition(() => {
-      void quickCreateItemWithDate(boardId, firstGroupId, trimmed, dateColumn.id, toISODate(day));
-    });
-  }
-
   return (
     <div
       className={`${compact ? "min-h-[140px]" : "min-h-[90px]"} border-b border-r border-border/60 p-1.5 ${
         inCurrentMonth ? "" : "bg-muted/30"
       }`}
       onDoubleClick={() => {
-        if (!quickAdding && firstGroupId) setQuickAdding(true);
+        if (firstGroupId) onRequestCreate(day);
       }}
     >
       <span className={`text-xs ${inCurrentMonth ? "text-foreground" : "text-muted-foreground"}`}>
@@ -129,26 +118,6 @@ function DayCell({
             </Link>
           );
         })}
-        {quickAdding && (
-          <input
-            autoFocus
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            onBlur={submitQuickAdd}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                submitQuickAdd();
-              }
-              if (event.key === "Escape") {
-                setQuickAdding(false);
-                setTitle("");
-              }
-            }}
-            placeholder="Novo item"
-            className="w-full rounded border border-ring bg-transparent px-1 py-0.5 text-xs outline-none"
-          />
-        )}
       </div>
     </div>
   );
@@ -171,6 +140,7 @@ export function CalendarView({
 }) {
   const [mode, setMode] = useState<CalendarMode>("month");
   const [reference, setReference] = useState(() => new Date());
+  const [creatingDate, setCreatingDate] = useState<Date | null>(null);
 
   const itemsByDate = new Map<string, ItemData[]>();
   for (const item of items) {
@@ -259,11 +229,26 @@ export function CalendarView({
                 statusColumn={statusColumn}
                 firstGroupId={firstGroupId}
                 compact={mode !== "month"}
+                onRequestCreate={setCreatingDate}
               />
             );
           })}
         </div>
       </div>
+
+      {firstGroupId && creatingDate && (
+        <CreateCalendarItemDialog
+          open={Boolean(creatingDate)}
+          onOpenChange={(open) => {
+            if (!open) setCreatingDate(null);
+          }}
+          workspaceSlug={workspaceSlug}
+          boardId={boardId}
+          groupId={firstGroupId}
+          dateColumnId={dateColumn.id}
+          isoDate={toISODate(creatingDate)}
+        />
+      )}
     </div>
   );
 }

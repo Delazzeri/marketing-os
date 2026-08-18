@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { AddWidgetPopover } from "@/components/dashboards/AddWidgetPopover";
 import { WidgetCard } from "@/components/dashboards/WidgetCard";
+import { deleteWidget } from "@/lib/actions/dashboards";
 import type { WidgetColumnData, WidgetItemData } from "@/lib/dashboard-widgets/registry";
 import type { DashboardWidgetType } from "@/lib/validation/dashboards";
 
@@ -30,6 +31,7 @@ export function DashboardView({
     setLocalWidgets(widgets);
   }
   const nextTempId = useRef(-1);
+  const [, startTransition] = useTransition();
 
   function handleAddStart(type: DashboardWidgetType, config: Record<string, unknown>) {
     const tempId = nextTempId.current--;
@@ -43,6 +45,11 @@ export function DashboardView({
         ? current.filter((widget) => widget.id !== tempId)
         : current.map((widget) => (widget.id === tempId ? { ...widget, id: realId } : widget)),
     );
+  }
+
+  function handleDelete(widgetId: number) {
+    setLocalWidgets((current) => current.filter((widget) => widget.id !== widgetId));
+    if (widgetId > 0) startTransition(() => deleteWidget(widgetId));
   }
 
   return (
@@ -62,6 +69,7 @@ export function DashboardView({
               type={widget.type}
               title={widget.config.title ?? ""}
               props={{ config: widget.config, columns, items }}
+              onDelete={handleDelete}
             />
           ))}
         </div>

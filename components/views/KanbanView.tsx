@@ -284,7 +284,7 @@ export function KanbanView({
         items={orderedOptions.map((option) => `kanban-column-${option.label}`)}
         strategy={horizontalListSortingStrategy}
       >
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="flex min-w-0 gap-3 overflow-x-auto pb-2">
           {orderedOptions.map((option) => (
             <KanbanColumn
               key={option.label}
