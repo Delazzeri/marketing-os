@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkspaceMembersWithEmail } from "@/lib/supabase/user-lookup";
 import { EditableCell } from "@/components/columns/EditableCell";
+import { ItemTitle } from "@/components/items/ItemTitle";
 import { UpdateComposer } from "@/components/items/UpdateComposer";
 import { UpdatesFeed } from "@/components/items/UpdatesFeed";
 import { AttachmentsList } from "@/components/items/AttachmentsList";
@@ -14,10 +15,12 @@ import type { ColumnType } from "@/lib/column-types/schemas";
 export async function ItemPanel({
   boardId,
   itemId,
+  autoFocusTitle = false,
 }: {
   workspaceSlug: string;
   boardId: number;
   itemId: number;
+  autoFocusTitle?: boolean;
 }) {
   const supabase = await createClient();
 
@@ -80,7 +83,7 @@ export async function ItemPanel({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">{item.title}</h1>
+        <ItemTitle itemId={item.id} title={item.title} autoFocus={autoFocusTitle} />
         {overdue && (
           <Badge variant="destructive" className="text-[10px]">
             atrasado

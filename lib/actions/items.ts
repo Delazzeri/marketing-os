@@ -116,8 +116,9 @@ export async function createItem(
 /**
  * Quick-add used by CalendarView's double-click-on-empty-cell affordance:
  * creates the item in the board's first group (calendar has no group
- * concept of its own) and immediately stamps the clicked day onto the date
- * column, so the item appears back on that cell without a second step.
+ * concept of its own), stamps the clicked day onto the date column, and
+ * returns the new item's id so the caller can open it (title starts blank —
+ * the modal opens straight into edit mode instead of asking for a name first).
  */
 export async function quickCreateItemWithDate(
   boardId: number,
@@ -128,7 +129,6 @@ export async function quickCreateItemWithDate(
 ) {
   const supabase = await createClient();
   const trimmedTitle = title.trim();
-  if (!trimmedTitle) throw new Error("Título obrigatório.");
 
   const {
     data: { user },
@@ -155,6 +155,16 @@ export async function quickCreateItemWithDate(
 
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
   return newItem.id as number;
+}
+
+export async function renameItem(itemId: number, title: string) {
+  const supabase = await createClient();
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle) throw new Error("Título obrigatório.");
+  const { error } = await supabase.from("items").update({ title: trimmedTitle }).eq("id", itemId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
+  revalidatePath("/[workspaceSlug]/boards/[boardId]/items/[itemId]", "page");
 }
 
 export async function deleteItem(itemId: number) {

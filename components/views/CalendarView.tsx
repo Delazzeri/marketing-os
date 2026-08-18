@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { columnTypeRegistry } from "@/lib/column-types/registry";
 import type { ColumnType } from "@/lib/column-types/schemas";
 import { monthGridDays, toISODate, WEEKDAY_LABELS } from "@/lib/date-grid";
-import { CreateCalendarItemDialog } from "@/components/views/CreateCalendarItemDialog";
+import { quickCreateItemWithDate } from "@/lib/actions/items";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -66,6 +67,7 @@ function DayCell({
   firstGroupId,
   compact,
   onRequestCreate,
+  creating,
 }: {
   day: Date;
   inCurrentMonth: boolean;
@@ -77,6 +79,7 @@ function DayCell({
   firstGroupId: number | null;
   compact: boolean;
   onRequestCreate: (day: Date) => void;
+  creating: boolean;
 }) {
   const Badge = columnTypeRegistry[dateColumn.type].renderCalendarBadge;
   const statusOptions =
@@ -95,7 +98,7 @@ function DayCell({
         inCurrentMonth ? "" : "bg-muted/30"
       }`}
       onDoubleClick={() => {
-        if (firstGroupId) onRequestCreate(day);
+        if (firstGroupId && !creating) onRequestCreate(day);
       }}
     >
       <span className={`text-xs ${inCurrentMonth ? "text-foreground" : "text-muted-foreground"}`}>
@@ -138,9 +141,19 @@ export function CalendarView({
   groups: { id: number }[];
   columns: ColumnData[];
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState<CalendarMode>("month");
   const [reference, setReference] = useState(() => new Date());
-  const [creatingDate, setCreatingDate] = useState<Date | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function handleRequestCreate(day: Date) {
+    const firstGroupId = groups[0]?.id;
+    if (!firstGroupId) return;
+    startTransition(async () => {
+      const itemId = await quickCreateItemWithDate(boardId, firstGroupId, "", dateColumn.id, toISODate(day));
+      router.push(`/${workspaceSlug}/boards/${boardId}/items/${itemId}?new=1`);
+    });
+  }
 
   const itemsByDate = new Map<string, ItemData[]>();
   for (const item of items) {
@@ -229,26 +242,13 @@ export function CalendarView({
                 statusColumn={statusColumn}
                 firstGroupId={firstGroupId}
                 compact={mode !== "month"}
-                onRequestCreate={setCreatingDate}
+                onRequestCreate={handleRequestCreate}
+                creating={pending}
               />
             );
           })}
         </div>
       </div>
-
-      {firstGroupId && creatingDate && (
-        <CreateCalendarItemDialog
-          open={Boolean(creatingDate)}
-          onOpenChange={(open) => {
-            if (!open) setCreatingDate(null);
-          }}
-          workspaceSlug={workspaceSlug}
-          boardId={boardId}
-          groupId={firstGroupId}
-          dateColumnId={dateColumn.id}
-          isoDate={toISODate(creatingDate)}
-        />
-      )}
     </div>
   );
 }
