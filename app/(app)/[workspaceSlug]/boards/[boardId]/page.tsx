@@ -26,7 +26,7 @@ export default async function BoardPage({
 
   const { data: board } = await supabase
     .from("boards")
-    .select("id, name, workspace_id, icon")
+    .select("id, name, workspace_id, icon, item_column_width")
     .eq("id", boardId)
     .single();
 
@@ -149,6 +149,7 @@ export default async function BoardPage({
         dateColumn={dateColumn}
         dashboards={boardDashboards}
         widgets={boardWidgets}
+        itemColumnWidth={board.item_column_width as number | null}
       />
 
       <div className="flex flex-wrap items-center gap-2">

@@ -70,6 +70,7 @@ export function GroupSection({
   columns,
   items,
   overdueItemIds,
+  itemColumnWidth,
 }: {
   boardId: number;
   workspaceSlug: string;
@@ -77,6 +78,7 @@ export function GroupSection({
   columns: ColumnData[];
   items: ItemData[];
   overdueItemIds?: Set<number>;
+  itemColumnWidth?: number | null;
 }) {
   const [, startTransition] = useTransition();
   const [collapsed, setCollapsed] = useState(false);
@@ -137,6 +139,7 @@ export function GroupSection({
               columns={columns}
               items={items}
               overdueItemIds={overdueItemIds}
+              itemColumnWidth={itemColumnWidth}
             />
           </div>
 

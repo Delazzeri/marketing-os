@@ -117,6 +117,13 @@ export async function setBoardIcon(boardId: number, icon: string | null) {
   revalidatePath("/[workspaceSlug]", "layout");
 }
 
+export async function setItemColumnWidth(boardId: number, width: number) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("boards").update({ item_column_width: width }).eq("id", boardId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
+}
+
 export async function moveBoardToFolder(boardId: number, folderId: number | null) {
   const supabase = await createClient();
   const { error } = await supabase.from("boards").update({ folder_id: folderId }).eq("id", boardId);

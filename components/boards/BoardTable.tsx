@@ -23,6 +23,7 @@ import { ColumnHeaderMenu } from "@/components/columns/ColumnHeaderMenu";
 import { CreateColumnForm } from "@/components/columns/CreateColumnForm";
 import { deleteItem, deleteItems, reorderItems } from "@/lib/actions/items";
 import { reorderColumns, setColumnWidth } from "@/lib/actions/columns";
+import { setItemColumnWidth } from "@/lib/actions/boards";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -44,18 +45,17 @@ interface ItemData {
 
 const MIN_COLUMN_WIDTH = 120;
 const DEFAULT_COLUMN_WIDTH = 160;
+const MIN_ITEM_COLUMN_WIDTH = 160;
+const DEFAULT_ITEM_COLUMN_WIDTH = 200;
 
-function SortableColumnHeader({ boardId, column }: { boardId: number; column: ColumnData }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: `column-${column.id}`,
-  });
-  const [, startTransition] = useTransition();
-  const savedWidth = (column.config.width as number | undefined) ?? DEFAULT_COLUMN_WIDTH;
+// Shared drag-to-resize logic for both the "Item" header and regular column
+// headers — only the min width, saved value, and persist callback differ.
+function useResizableWidth(savedWidth: number, minWidth: number, onResize: (width: number) => void) {
   const [width, setWidth] = useState(savedWidth);
   const [resizing, setResizing] = useState(false);
 
-  // Re-sync when the column prop changes (e.g. another tab resized it) —
-  // same pattern as AppSidebar.tsx's board/folder prop sync.
+  // Re-sync when the saved value changes elsewhere (e.g. another tab
+  // resized it) — same pattern as AppSidebar.tsx's board/folder prop sync.
   const [prevSavedWidth, setPrevSavedWidth] = useState(savedWidth);
   if (savedWidth !== prevSavedWidth) {
     setPrevSavedWidth(savedWidth);
@@ -70,20 +70,60 @@ function SortableColumnHeader({ boardId, column }: { boardId: number; column: Co
     setResizing(true);
 
     function onMove(moveEvent: PointerEvent) {
-      const next = Math.max(MIN_COLUMN_WIDTH, startWidth + (moveEvent.clientX - startX));
-      setWidth(next);
+      setWidth(Math.max(minWidth, startWidth + (moveEvent.clientX - startX)));
     }
     function onUp(upEvent: PointerEvent) {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       setResizing(false);
-      const finalWidth = Math.max(MIN_COLUMN_WIDTH, startWidth + (upEvent.clientX - startX));
+      const finalWidth = Math.max(minWidth, startWidth + (upEvent.clientX - startX));
       setWidth(finalWidth);
-      startTransition(() => setColumnWidth(column.id, finalWidth));
+      onResize(finalWidth);
     }
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }
+
+  return { width, resizing, startResize };
+}
+
+function ResizeHandle({ resizing, onPointerDown }: { resizing: boolean; onPointerDown: (event: ReactPointerEvent) => void }) {
+  return (
+    <span
+      onPointerDown={onPointerDown}
+      className={`absolute top-0 right-0 h-full w-1.5 cursor-col-resize select-none ${
+        resizing ? "bg-primary" : "hover:bg-primary/40"
+      }`}
+    />
+  );
+}
+
+function ItemColumnHeader({ boardId, savedWidth }: { boardId: number; savedWidth: number }) {
+  const [, startTransition] = useTransition();
+  const { width, resizing, startResize } = useResizableWidth(savedWidth, MIN_ITEM_COLUMN_WIDTH, (finalWidth) =>
+    startTransition(() => setItemColumnWidth(boardId, finalWidth)),
+  );
+
+  return (
+    <th
+      style={{ width, minWidth: width, maxWidth: width }}
+      className="relative px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
+    >
+      Item
+      <ResizeHandle resizing={resizing} onPointerDown={startResize} />
+    </th>
+  );
+}
+
+function SortableColumnHeader({ boardId, column }: { boardId: number; column: ColumnData }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `column-${column.id}`,
+  });
+  const [, startTransition] = useTransition();
+  const savedWidth = (column.config.width as number | undefined) ?? DEFAULT_COLUMN_WIDTH;
+  const { width, resizing, startResize } = useResizableWidth(savedWidth, MIN_COLUMN_WIDTH, (finalWidth) =>
+    startTransition(() => setColumnWidth(column.id, finalWidth)),
+  );
 
   return (
     <th
@@ -96,7 +136,7 @@ function SortableColumnHeader({ boardId, column }: { boardId: number; column: Co
         minWidth: width,
         maxWidth: width,
       }}
-      className="group relative px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
+      className="group relative border-l border-border/60 px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
     >
       <div className="flex items-center gap-1.5 overflow-hidden">
         <span
@@ -109,12 +149,7 @@ function SortableColumnHeader({ boardId, column }: { boardId: number; column: Co
         <span className="truncate">{column.name}</span>
         <ColumnHeaderMenu boardId={boardId} column={column} />
       </div>
-      <span
-        onPointerDown={startResize}
-        className={`absolute top-0 right-0 h-full w-1.5 cursor-col-resize select-none ${
-          resizing ? "bg-primary" : "hover:bg-primary/40"
-        }`}
-      />
+      <ResizeHandle resizing={resizing} onPointerDown={startResize} />
     </th>
   );
 }
@@ -127,6 +162,7 @@ function SortableItemRow({
   overdue,
   selected,
   onSelectChange,
+  itemColumnWidth,
 }: {
   item: ItemData;
   columns: ColumnData[];
@@ -135,6 +171,7 @@ function SortableItemRow({
   overdue?: boolean;
   selected: boolean;
   onSelectChange: (checked: boolean) => void;
+  itemColumnWidth: number;
 }) {
   const [, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -154,19 +191,22 @@ function SortableItemRow({
           aria-label={`Selecionar ${item.title}`}
         />
       </td>
-      <td className="px-3 py-1.5">
+      <td
+        className="overflow-hidden px-3 py-1.5"
+        style={{ width: itemColumnWidth, minWidth: itemColumnWidth, maxWidth: itemColumnWidth }}
+      >
         <div className="flex items-center gap-1.5">
           <span {...attributes} {...listeners} className="cursor-grab select-none text-muted-foreground/50">
             <GripVertical className="h-4 w-4" />
           </span>
           <Link
             href={`/${workspaceSlug}/boards/${boardId}/items/${item.id}`}
-            className={`hover:underline ${overdue ? "text-destructive" : ""}`}
+            className={`truncate hover:underline ${overdue ? "text-destructive" : ""}`}
           >
             {item.title}
           </Link>
           {overdue && (
-            <Badge variant="destructive" className="rounded-full text-[10px]">
+            <Badge variant="destructive" className="shrink-0 rounded-full text-[10px]">
               atrasado
             </Badge>
           )}
@@ -175,7 +215,7 @@ function SortableItemRow({
             variant="ghost"
             size="icon-xs"
             onClick={() => startTransition(() => deleteItem(item.id))}
-            className="ml-auto text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive"
+            className="ml-auto shrink-0 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive"
             title="Excluir item"
           >
             <X />
@@ -210,13 +250,16 @@ export function BoardTable({
   columns,
   items,
   overdueItemIds,
+  itemColumnWidth,
 }: {
   boardId: number;
   workspaceSlug: string;
   columns: ColumnData[];
   items: ItemData[];
   overdueItemIds?: Set<number>;
+  itemColumnWidth?: number | null;
 }) {
+  const resolvedItemColumnWidth = itemColumnWidth ?? DEFAULT_ITEM_COLUMN_WIDTH;
   const [orderedColumns, setOrderedColumns] = useState(columns);
   const [orderedItems, setOrderedItems] = useState(items);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -294,9 +337,7 @@ export function BoardTable({
                     aria-label="Selecionar todos"
                   />
                 </th>
-                <th className="min-w-[200px] px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  Item
-                </th>
+                <ItemColumnHeader boardId={boardId} savedWidth={resolvedItemColumnWidth} />
                 <SortableContext
                   items={orderedColumns.map((c) => `column-${c.id}`)}
                   strategy={horizontalListSortingStrategy}
@@ -325,6 +366,7 @@ export function BoardTable({
                     overdue={overdueItemIds?.has(item.id)}
                     selected={selectedIds.has(item.id)}
                     onSelectChange={(checked) => toggleSelect(item.id, checked)}
+                    itemColumnWidth={resolvedItemColumnWidth}
                   />
                 ))}
               </SortableContext>

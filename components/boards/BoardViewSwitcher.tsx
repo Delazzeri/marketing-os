@@ -57,6 +57,7 @@ export function BoardViewSwitcher({
   dateColumn,
   dashboards,
   widgets,
+  itemColumnWidth,
 }: {
   boardId: number;
   workspaceSlug: string;
@@ -67,6 +68,7 @@ export function BoardViewSwitcher({
   dateColumn: ColumnData | undefined;
   dashboards: DashboardData[];
   widgets: WidgetData[];
+  itemColumnWidth?: number | null;
 }) {
   const [view, setView] = useState<"table" | "calendar" | "dashboard">("table");
 
@@ -99,6 +101,7 @@ export function BoardViewSwitcher({
           columns={columns}
           items={items}
           overdueItemIds={overdueItemIds}
+          itemColumnWidth={itemColumnWidth}
         />
       )}
     </>

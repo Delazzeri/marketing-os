@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -393,8 +394,8 @@ export function AppSidebar({
               render={<Link href={`/${workspaceSlug}`} />}
               className="group-data-[collapsible=icon]:justify-center"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-xs font-bold text-primary-foreground">
-                {workspaceName.slice(0, 1).toUpperCase()}
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary to-accent">
+                <Image src="/logo-mkt.png" alt="" width={32} height={32} className="h-full w-full object-cover" />
               </div>
               <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
                 <span className="truncate text-sm font-semibold">{workspaceName}</span>

@@ -50,6 +50,7 @@ export function BoardContent({
   columns,
   items,
   overdueItemIds,
+  itemColumnWidth,
 }: {
   boardId: number;
   workspaceSlug: string;
@@ -57,6 +58,7 @@ export function BoardContent({
   columns: ColumnData[];
   items: ItemData[];
   overdueItemIds?: Set<number>;
+  itemColumnWidth?: number | null;
 }) {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<number, Set<string>>>({});
@@ -172,6 +174,7 @@ export function BoardContent({
                   columns={columns}
                   items={groupItems}
                   overdueItemIds={overdueItemIds}
+                  itemColumnWidth={itemColumnWidth}
                 />
               );
             })}
