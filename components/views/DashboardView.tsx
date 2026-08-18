@@ -1,75 +1,61 @@
 "use client";
 
-import { useState } from "react";
-import { DashboardTabs } from "@/components/dashboards/DashboardTabs";
+import { useRef, useState } from "react";
 import { AddWidgetPopover } from "@/components/dashboards/AddWidgetPopover";
 import { WidgetCard } from "@/components/dashboards/WidgetCard";
 import type { WidgetColumnData, WidgetItemData } from "@/lib/dashboard-widgets/registry";
 import type { DashboardWidgetType } from "@/lib/validation/dashboards";
 
-interface DashboardData {
-  id: number;
-  name: string;
-}
-
 interface WidgetData {
   id: number;
-  dashboardId: number;
   type: DashboardWidgetType;
   config: { title?: string; columnId?: number; [key: string]: unknown };
 }
 
 export function DashboardView({
   boardId,
-  dashboards,
   widgets,
   columns,
   items,
 }: {
   boardId: number;
-  dashboards: DashboardData[];
   widgets: WidgetData[];
   columns: WidgetColumnData[];
   items: WidgetItemData[];
 }) {
-  const [activeDashboardId, setActiveDashboardId] = useState<number | null>(dashboards[0]?.id ?? null);
+  const [localWidgets, setLocalWidgets] = useState(widgets);
+  const [prevWidgets, setPrevWidgets] = useState(widgets);
+  if (widgets !== prevWidgets) {
+    setPrevWidgets(widgets);
+    setLocalWidgets(widgets);
+  }
+  const nextTempId = useRef(-1);
 
-  if (dashboards.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-12 text-center">
-        <p className="text-sm text-muted-foreground">Nenhum dashboard ainda.</p>
-        <DashboardTabs
-          boardId={boardId}
-          dashboards={dashboards}
-          activeDashboardId={activeDashboardId}
-          onSelect={setActiveDashboardId}
-        />
-      </div>
+  function handleAddStart(type: DashboardWidgetType, config: Record<string, unknown>) {
+    const tempId = nextTempId.current--;
+    setLocalWidgets((current) => [...current, { id: tempId, type, config }]);
+    return tempId;
+  }
+
+  function handleAddSettled(tempId: number, realId: number | null) {
+    setLocalWidgets((current) =>
+      realId === null
+        ? current.filter((widget) => widget.id !== tempId)
+        : current.map((widget) => (widget.id === tempId ? { ...widget, id: realId } : widget)),
     );
   }
 
-  const activeId = activeDashboardId && dashboards.some((d) => d.id === activeDashboardId)
-    ? activeDashboardId
-    : dashboards[0].id;
-  const activeWidgets = widgets.filter((widget) => widget.dashboardId === activeId);
-
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <DashboardTabs
-          boardId={boardId}
-          dashboards={dashboards}
-          activeDashboardId={activeId}
-          onSelect={setActiveDashboardId}
-        />
-        <AddWidgetPopover dashboardId={activeId} />
+      <div className="flex items-center justify-end">
+        <AddWidgetPopover boardId={boardId} onAddStart={handleAddStart} onAddSettled={handleAddSettled} />
       </div>
 
-      {activeWidgets.length === 0 ? (
+      {localWidgets.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nenhum widget ainda. Use &ldquo;+ Widget&rdquo; para adicionar.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {activeWidgets.map((widget) => (
+          {localWidgets.map((widget) => (
             <WidgetCard
               key={widget.id}
               widgetId={widget.id}

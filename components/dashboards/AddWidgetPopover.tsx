@@ -8,8 +8,29 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
-export function AddWidgetPopover({ dashboardId }: { dashboardId: number }) {
+export function AddWidgetPopover({
+  boardId,
+  onAddStart,
+  onAddSettled,
+}: {
+  boardId: number;
+  onAddStart: (type: DashboardWidgetType, config: Record<string, unknown>) => number;
+  onAddSettled: (tempId: number, realId: number | null) => void;
+}) {
   const [, startTransition] = useTransition();
+
+  function handleAdd(type: DashboardWidgetType) {
+    const config = { title: dashboardWidgetRegistry[type].label };
+    const tempId = onAddStart(type, config);
+    startTransition(async () => {
+      try {
+        const created = await addWidget(boardId, type, config);
+        onAddSettled(tempId, created.id);
+      } catch {
+        onAddSettled(tempId, null);
+      }
+    });
+  }
 
   return (
     <Popover>
@@ -27,7 +48,7 @@ export function AddWidgetPopover({ dashboardId }: { dashboardId: number }) {
             <button
               key={type}
               type="button"
-              onClick={() => startTransition(() => addWidget(dashboardId, type, { title: definition.label }))}
+              onClick={() => handleAdd(type)}
               className="block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
             >
               {definition.label}

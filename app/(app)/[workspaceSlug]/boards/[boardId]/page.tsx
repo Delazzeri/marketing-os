@@ -94,7 +94,7 @@ export default async function BoardPage({
     { data: items },
     { data: columns },
     { data: overdueAutomation },
-    { data: dashboards },
+    { data: widgetRows },
   ] = await Promise.all([
     supabase
       .from("groups")
@@ -115,8 +115,8 @@ export default async function BoardPage({
       .eq("enabled", true)
       .maybeSingle(),
     supabase
-      .from("dashboards")
-      .select("id, name, dashboard_widgets(id, type, config)")
+      .from("dashboard_widgets")
+      .select("id, type, config")
       .eq("board_id", board.id)
       .order("position", { ascending: true }),
   ]);
@@ -143,15 +143,11 @@ export default async function BoardPage({
 
   const dateColumn = boardColumns.find((column) => column.type === "date");
 
-  const boardDashboards = (dashboards ?? []).map((dashboard) => ({ id: dashboard.id, name: dashboard.name }));
-  const boardWidgets = (dashboards ?? []).flatMap((dashboard) =>
-    (dashboard.dashboard_widgets ?? []).map((widget) => ({
-      id: widget.id,
-      dashboardId: dashboard.id,
-      type: widget.type as DashboardWidgetType,
-      config: (widget.config ?? {}) as { title?: string; columnId?: number; [key: string]: unknown },
-    })),
-  );
+  const boardWidgets = (widgetRows ?? []).map((widget) => ({
+    id: widget.id,
+    type: widget.type as DashboardWidgetType,
+    config: (widget.config ?? {}) as { title?: string; columnId?: number; [key: string]: unknown },
+  }));
 
   const overdueDateColumnId = (overdueAutomation?.action_config as { dateColumnId?: number } | null)
     ?.dateColumnId;
@@ -202,7 +198,6 @@ export default async function BoardPage({
         items={boardItems}
         overdueItemIds={overdueItemIds}
         dateColumn={dateColumn}
-        dashboards={boardDashboards}
         widgets={boardWidgets}
         viewOrder={viewOrder}
         itemColumnWidth={board.item_column_width as number | null}

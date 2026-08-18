@@ -32,14 +32,8 @@ interface GroupData {
   color: string | null;
 }
 
-interface DashboardData {
-  id: number;
-  name: string;
-}
-
 interface WidgetData {
   id: number;
-  dashboardId: number;
   type: DashboardWidgetType;
   config: { title?: string; columnId?: number; [key: string]: unknown };
 }
@@ -58,7 +52,6 @@ export function BoardViewSwitcher({
   items,
   overdueItemIds,
   dateColumn,
-  dashboards,
   widgets,
   viewOrder,
   itemColumnWidth,
@@ -71,7 +64,6 @@ export function BoardViewSwitcher({
   items: ItemData[];
   overdueItemIds?: Set<number>;
   dateColumn: ColumnData | undefined;
-  dashboards: DashboardData[];
   widgets: WidgetData[];
   viewOrder: ViewKind[];
   itemColumnWidth?: number | null;
@@ -113,7 +105,6 @@ export function BoardViewSwitcher({
       ) : view === "dashboard" ? (
         <DashboardView
           boardId={boardId}
-          dashboards={dashboards}
           widgets={widgets}
           columns={columns as WidgetColumnData[]}
           items={items as WidgetItemData[]}

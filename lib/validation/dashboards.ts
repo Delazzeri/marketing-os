@@ -13,12 +13,6 @@ export const dashboardWidgetTypeSchema = z.enum([
 
 export type DashboardWidgetType = z.infer<typeof dashboardWidgetTypeSchema>;
 
-export const dashboardFieldsSchema = z.object({
-  name: z.string().min(1, "Obrigatório"),
-});
-
-export type DashboardFields = z.infer<typeof dashboardFieldsSchema>;
-
 export const widgetConfigSchema = z.object({
   title: z.string().optional(),
   columnId: z.coerce.number().int().positive().optional(),
