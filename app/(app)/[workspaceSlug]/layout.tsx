@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { getCurrentUserContext } from "@/lib/auth/roles";
+import { canWrite } from "@/lib/roles";
 import type { AppNotification } from "@/lib/types";
 import type { ReactNode } from "react";
 
@@ -27,6 +29,9 @@ export default async function WorkspaceLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const { isAdmin, workspaceRole } = await getCurrentUserContext(workspace.id);
+  const canEdit = canWrite(workspaceRole, isAdmin);
 
   const [{ data: boards }, { data: folders }, { data: notifications }] = await Promise.all([
     supabase
@@ -64,6 +69,8 @@ export default async function WorkspaceLayout({
         workspaceName={workspace.name}
         boards={boardSummaries}
         folders={folders ?? []}
+        isAdmin={isAdmin}
+        canEdit={canEdit}
       />
       <SidebarInset>
         <header className="flex items-center justify-between border-b border-border px-4 py-2.5">

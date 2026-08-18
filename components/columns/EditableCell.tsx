@@ -20,12 +20,14 @@ export function EditableCell({
   columnType,
   config,
   value,
+  canEdit = true,
 }: {
   itemId: number;
   columnId: number;
   columnType: ColumnType;
   config: ColumnConfig;
   value: unknown;
+  canEdit?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [, startTransition] = useTransition();
@@ -38,6 +40,14 @@ export function EditableCell({
     startTransition(() => {
       updateItemValue(itemId, columnId, nextValue);
     });
+  }
+
+  if (!canEdit) {
+    return (
+      <div className="flex min-h-[28px] w-full items-center px-1 text-left">
+        <Cell value={value ?? null} config={config} />
+      </div>
+    );
   }
 
   const trigger = (

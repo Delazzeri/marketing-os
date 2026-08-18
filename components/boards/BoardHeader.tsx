@@ -4,6 +4,7 @@ import { InvitePersonModal } from "@/components/team/InvitePersonModal";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { avatarColorFor } from "@/lib/avatar-color";
+import { ROLE_LABELS, type WorkspaceRole } from "@/lib/roles";
 import { UserPlus, Plus } from "lucide-react";
 
 interface MemberSummary {
@@ -18,22 +19,20 @@ function focusFirstNewItemInput() {
   input.focus();
 }
 
-// "Admin"/"Membro" mirrors the same owner→Admin, member→Membro mapping
-// TeamPanel.tsx uses — see lib/actions/workspace-members.ts for why there's
-// no third role value yet.
-const ROLE_LABELS: Record<"owner" | "member", string> = {
-  owner: "Admin",
-  member: "Membro",
-};
-
 export function BoardHeader({
   workspaceId,
   members,
   currentUserRole,
+  isAdmin = false,
+  canEdit = true,
+  canManageTeam = false,
 }: {
   workspaceId: number;
   members: MemberSummary[];
-  currentUserRole: "owner" | "member" | null;
+  currentUserRole: WorkspaceRole | null;
+  isAdmin?: boolean;
+  canEdit?: boolean;
+  canManageTeam?: boolean;
 }) {
   const visibleMembers = members.slice(0, 4);
   const overflowCount = members.length - visibleMembers.length;
@@ -58,26 +57,28 @@ export function BoardHeader({
         )}
       </div>
 
-      {currentUserRole && (
-        <span className="hidden text-xs text-muted-foreground sm:inline">
-          Você · {ROLE_LABELS[currentUserRole]}
-        </span>
+      <span className="hidden text-xs text-muted-foreground sm:inline">
+        Você · {isAdmin ? "Admin" : currentUserRole ? ROLE_LABELS[currentUserRole] : ""}
+      </span>
+
+      {canManageTeam && (
+        <InvitePersonModal
+          workspaceId={workspaceId}
+          trigger={
+            <Button type="button" variant="outline" size="sm">
+              <UserPlus />
+              Convidar
+            </Button>
+          }
+        />
       )}
 
-      <InvitePersonModal
-        workspaceId={workspaceId}
-        trigger={
-          <Button type="button" variant="outline" size="sm">
-            <UserPlus />
-            Convidar
-          </Button>
-        }
-      />
-
-      <Button type="button" size="sm" onClick={focusFirstNewItemInput}>
-        <Plus />
-        Criar conteúdos
-      </Button>
+      {canEdit && (
+        <Button type="button" size="sm" onClick={focusFirstNewItemInput}>
+          <Plus />
+          Criar conteúdos
+        </Button>
+      )}
     </div>
   );
 }

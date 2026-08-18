@@ -3,29 +3,38 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getCurrentUserContext } from "@/lib/auth/roles";
+import { canManageTeam } from "@/lib/roles";
 import { inviteMemberFieldsSchema } from "@/lib/validation/workspace-members";
 
 export type InviteMemberFormState = { error?: string };
 
 /**
- * Cosmetic invite (per the Nocturne redesign's confirmed scope): grabs an
- * existing auth.users row by email and adds it to workspace_members. Does
- * NOT create a new account or send an email — there's no signup/invite
- * flow in this app yet. "Leitor" role doesn't exist in workspace_role
- * (only owner/member) so the UI maps it to member; see TeamPanel.tsx.
+ * Grabs an existing auth.users row by email and adds it to
+ * workspace_members with the chosen role. Does NOT create a new account or
+ * send an email — account creation happens through the /admin panel
+ * (lib/actions/admin.ts createUserAccount).
  */
 export async function inviteMember(
   workspaceId: number,
   _prevState: InviteMemberFormState,
   formData: FormData,
 ): Promise<InviteMemberFormState> {
+  const { isAdmin, workspaceRole } = await getCurrentUserContext(workspaceId);
+  if (!canManageTeam(workspaceRole, isAdmin)) {
+    return { error: "Você não tem permissão para gerenciar a equipe deste workspace." };
+  }
+
   const supabase = await createClient();
 
   let fields;
   try {
-    fields = inviteMemberFieldsSchema.parse({ email: formData.get("email") });
+    fields = inviteMemberFieldsSchema.parse({
+      email: formData.get("email"),
+      role: formData.get("role"),
+    });
   } catch {
-    return { error: "Email inválido." };
+    return { error: "Confira os campos obrigatórios." };
   }
 
   const service = createServiceClient();
@@ -50,7 +59,7 @@ export async function inviteMember(
   const { error: insertError } = await supabase.from("workspace_members").insert({
     workspace_id: workspaceId,
     user_id: targetUser.id,
-    role: "member",
+    role: fields.role,
   });
   if (insertError) return { error: insertError.message };
 

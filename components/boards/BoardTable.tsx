@@ -98,7 +98,15 @@ function ResizeHandle({ resizing, onPointerDown }: { resizing: boolean; onPointe
   );
 }
 
-function ItemColumnHeader({ boardId, savedWidth }: { boardId: number; savedWidth: number }) {
+function ItemColumnHeader({
+  boardId,
+  savedWidth,
+  canEdit,
+}: {
+  boardId: number;
+  savedWidth: number;
+  canEdit: boolean;
+}) {
   const [, startTransition] = useTransition();
   const { width, resizing, startResize } = useResizableWidth(savedWidth, MIN_ITEM_COLUMN_WIDTH, (finalWidth) =>
     startTransition(() => setItemColumnWidth(boardId, finalWidth)),
@@ -110,14 +118,23 @@ function ItemColumnHeader({ boardId, savedWidth }: { boardId: number; savedWidth
       className="relative px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
     >
       Item
-      <ResizeHandle resizing={resizing} onPointerDown={startResize} />
+      {canEdit && <ResizeHandle resizing={resizing} onPointerDown={startResize} />}
     </th>
   );
 }
 
-function SortableColumnHeader({ boardId, column }: { boardId: number; column: ColumnData }) {
+function SortableColumnHeader({
+  boardId,
+  column,
+  canEdit,
+}: {
+  boardId: number;
+  column: ColumnData;
+  canEdit: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `column-${column.id}`,
+    disabled: !canEdit,
   });
   const [, startTransition] = useTransition();
   const savedWidth = (column.config.width as number | undefined) ?? DEFAULT_COLUMN_WIDTH;
@@ -139,17 +156,19 @@ function SortableColumnHeader({ boardId, column }: { boardId: number; column: Co
       className="group relative border-l border-border/60 px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
     >
       <div className="flex items-center gap-1.5 overflow-hidden">
-        <span
-          {...attributes}
-          {...listeners}
-          className="shrink-0 cursor-grab select-none text-muted-foreground/50 opacity-0 group-hover:opacity-100"
-        >
-          <GripVertical className="h-4 w-4" />
-        </span>
+        {canEdit && (
+          <span
+            {...attributes}
+            {...listeners}
+            className="shrink-0 cursor-grab select-none text-muted-foreground/50 opacity-0 group-hover:opacity-100"
+          >
+            <GripVertical className="h-4 w-4" />
+          </span>
+        )}
         <span className="truncate">{column.name}</span>
-        <ColumnHeaderMenu boardId={boardId} column={column} />
+        {canEdit && <ColumnHeaderMenu boardId={boardId} column={column} />}
       </div>
-      <ResizeHandle resizing={resizing} onPointerDown={startResize} />
+      {canEdit && <ResizeHandle resizing={resizing} onPointerDown={startResize} />}
     </th>
   );
 }
@@ -163,6 +182,7 @@ function SortableItemRow({
   selected,
   onSelectChange,
   itemColumnWidth,
+  canEdit,
 }: {
   item: ItemData;
   columns: ColumnData[];
@@ -172,10 +192,12 @@ function SortableItemRow({
   selected: boolean;
   onSelectChange: (checked: boolean) => void;
   itemColumnWidth: number;
+  canEdit: boolean;
 }) {
   const [, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `item-${item.id}`,
+    disabled: !canEdit,
   });
 
   return (
@@ -184,21 +206,25 @@ function SortableItemRow({
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
       className="group border-b border-border/40 last:border-0 hover:bg-muted/30"
     >
-      <td className="w-8 px-2 py-1.5">
-        <Checkbox
-          checked={selected}
-          onCheckedChange={(checked) => onSelectChange(checked === true)}
-          aria-label={`Selecionar ${item.title}`}
-        />
-      </td>
+      {canEdit && (
+        <td className="w-8 px-2 py-1.5">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={(checked) => onSelectChange(checked === true)}
+            aria-label={`Selecionar ${item.title}`}
+          />
+        </td>
+      )}
       <td
         className="overflow-hidden px-3 py-1.5"
         style={{ width: itemColumnWidth, minWidth: itemColumnWidth, maxWidth: itemColumnWidth }}
       >
         <div className="flex items-center gap-1.5">
-          <span {...attributes} {...listeners} className="cursor-grab select-none text-muted-foreground/50">
-            <GripVertical className="h-4 w-4" />
-          </span>
+          {canEdit && (
+            <span {...attributes} {...listeners} className="cursor-grab select-none text-muted-foreground/50">
+              <GripVertical className="h-4 w-4" />
+            </span>
+          )}
           <Link
             href={`/${workspaceSlug}/boards/${boardId}/items/${item.id}`}
             className={`truncate hover:underline ${overdue ? "text-destructive" : ""}`}
@@ -210,16 +236,18 @@ function SortableItemRow({
               atrasado
             </Badge>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => startTransition(() => deleteItem(item.id))}
-            className="ml-auto shrink-0 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive"
-            title="Excluir item"
-          >
-            <X />
-          </Button>
+          {canEdit && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => startTransition(() => deleteItem(item.id))}
+              className="ml-auto shrink-0 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive"
+              title="Excluir item"
+            >
+              <X />
+            </Button>
+          )}
         </div>
       </td>
       {columns.map((column) => (
@@ -237,6 +265,7 @@ function SortableItemRow({
             columnType={column.type}
             config={column.config}
             value={item.values[column.id]}
+            canEdit={canEdit}
           />
         </td>
       ))}
@@ -251,6 +280,7 @@ export function BoardTable({
   items,
   overdueItemIds,
   itemColumnWidth,
+  canEdit = true,
 }: {
   boardId: number;
   workspaceSlug: string;
@@ -258,6 +288,7 @@ export function BoardTable({
   items: ItemData[];
   overdueItemIds?: Set<number>;
   itemColumnWidth?: number | null;
+  canEdit?: boolean;
 }) {
   const resolvedItemColumnWidth = itemColumnWidth ?? DEFAULT_ITEM_COLUMN_WIDTH;
   const [orderedColumns, setOrderedColumns] = useState(columns);
@@ -290,6 +321,7 @@ export function BoardTable({
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!canEdit) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -330,25 +362,29 @@ export function BoardTable({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30">
-                <th className="w-8 px-2 py-2">
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={(checked) => toggleSelectAll(checked === true)}
-                    aria-label="Selecionar todos"
-                  />
-                </th>
-                <ItemColumnHeader boardId={boardId} savedWidth={resolvedItemColumnWidth} />
+                {canEdit && (
+                  <th className="w-8 px-2 py-2">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                      aria-label="Selecionar todos"
+                    />
+                  </th>
+                )}
+                <ItemColumnHeader boardId={boardId} savedWidth={resolvedItemColumnWidth} canEdit={canEdit} />
                 <SortableContext
                   items={orderedColumns.map((c) => `column-${c.id}`)}
                   strategy={horizontalListSortingStrategy}
                 >
                   {orderedColumns.map((column) => (
-                    <SortableColumnHeader key={column.id} boardId={boardId} column={column} />
+                    <SortableColumnHeader key={column.id} boardId={boardId} column={column} canEdit={canEdit} />
                   ))}
                 </SortableContext>
-                <th className="px-2 py-2">
-                  <CreateColumnForm boardId={boardId} />
-                </th>
+                {canEdit && (
+                  <th className="px-2 py-2">
+                    <CreateColumnForm boardId={boardId} />
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -367,6 +403,7 @@ export function BoardTable({
                     selected={selectedIds.has(item.id)}
                     onSelectChange={(checked) => toggleSelect(item.id, checked)}
                     itemColumnWidth={resolvedItemColumnWidth}
+                    canEdit={canEdit}
                   />
                 ))}
               </SortableContext>

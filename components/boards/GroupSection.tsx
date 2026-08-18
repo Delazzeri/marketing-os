@@ -71,6 +71,7 @@ export function GroupSection({
   items,
   overdueItemIds,
   itemColumnWidth,
+  canEdit = true,
 }: {
   boardId: number;
   workspaceSlug: string;
@@ -79,6 +80,7 @@ export function GroupSection({
   items: ItemData[];
   overdueItemIds?: Set<number>;
   itemColumnWidth?: number | null;
+  canEdit?: boolean;
 }) {
   const [, startTransition] = useTransition();
   const [collapsed, setCollapsed] = useState(false);
@@ -100,13 +102,15 @@ export function GroupSection({
       className="flex flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card pl-3 shadow-sm"
     >
       <div className={`flex items-center gap-2 pr-3 pt-3 ${collapsed ? "pb-3" : ""}`}>
-        <span
-          {...attributes}
-          {...listeners}
-          className="cursor-grab select-none text-muted-foreground/40 hover:text-muted-foreground"
-        >
-          <GripVertical className="h-4 w-4" />
-        </span>
+        {canEdit && (
+          <span
+            {...attributes}
+            {...listeners}
+            className="cursor-grab select-none text-muted-foreground/40 hover:text-muted-foreground"
+          >
+            <GripVertical className="h-4 w-4" />
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
@@ -115,18 +119,26 @@ export function GroupSection({
         >
           <ChevronRight className={`h-4 w-4 transition-transform ${collapsed ? "" : "rotate-90"}`} />
         </button>
-        <ColorSwatchPicker
-          value={color}
-          onChange={(next) => startTransition(() => setGroupColor(group.id, next))}
-        />
-        <InlineEditableText
-          value={group.name}
-          onCommit={(next) => renameGroup(group.id, next)}
-          className="text-sm font-semibold"
-        />
+        {canEdit ? (
+          <ColorSwatchPicker
+            value={color}
+            onChange={(next) => startTransition(() => setGroupColor(group.id, next))}
+          />
+        ) : (
+          <span className="h-4 w-4 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+        )}
+        {canEdit ? (
+          <InlineEditableText
+            value={group.name}
+            onCommit={(next) => renameGroup(group.id, next)}
+            className="text-sm font-semibold"
+          />
+        ) : (
+          <span className="text-sm font-semibold">{group.name}</span>
+        )}
         <Badge variant="secondary">{items.length}</Badge>
         {collapsed && <GroupFooterProgress items={items} statusColumn={statusColumn} />}
-        <DeleteGroupButton groupId={group.id} groupName={group.name} />
+        {canEdit && <DeleteGroupButton groupId={group.id} groupName={group.name} />}
       </div>
 
       {!collapsed && (
@@ -140,11 +152,12 @@ export function GroupSection({
               items={items}
               overdueItemIds={overdueItemIds}
               itemColumnWidth={itemColumnWidth}
+              canEdit={canEdit}
             />
           </div>
 
           <div className="flex items-center gap-2 pr-3 pb-3">
-            <CreateItemForm boardId={boardId} groupId={group.id} />
+            {canEdit && <CreateItemForm boardId={boardId} groupId={group.id} />}
             <GroupFooterProgress items={items} statusColumn={statusColumn} />
           </div>
         </>

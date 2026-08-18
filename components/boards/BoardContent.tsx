@@ -51,6 +51,7 @@ export function BoardContent({
   items,
   overdueItemIds,
   itemColumnWidth,
+  canEdit = true,
 }: {
   boardId: number;
   workspaceSlug: string;
@@ -59,6 +60,7 @@ export function BoardContent({
   items: ItemData[];
   overdueItemIds?: Set<number>;
   itemColumnWidth?: number | null;
+  canEdit?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<number, Set<string>>>({});
@@ -78,6 +80,7 @@ export function BoardContent({
   }
 
   function handleGroupDragEnd(event: DragEndEvent) {
+    if (!canEdit) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = orderedGroups.findIndex((g) => `group-${g.id}` === active.id);
@@ -175,6 +178,7 @@ export function BoardContent({
                   items={groupItems}
                   overdueItemIds={overdueItemIds}
                   itemColumnWidth={itemColumnWidth}
+                  canEdit={canEdit}
                 />
               );
             })}

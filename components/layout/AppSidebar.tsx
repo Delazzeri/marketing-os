@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Building2,
   ChevronRight,
   Folder,
   GripVertical,
@@ -88,19 +89,23 @@ function BoardRow({
   board,
   workspaceSlug,
   folders,
+  canEdit,
 }: {
   board: BoardSummary;
   workspaceSlug: string;
   folders: FolderSummary[];
+  canEdit: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `board-${board.id}`,
+    disabled: !canEdit,
   });
   const href = `/${workspaceSlug}/boards/${board.id}`;
   const isActive = pathname.startsWith(href);
+  const iconColor = board.color ?? "var(--color-sidebar-accent)";
 
   return (
     <SidebarMenuItem
@@ -112,24 +117,39 @@ function BoardRow({
         isActive ? "border-primary" : "border-transparent",
       )}
     >
-      <span
-        {...attributes}
-        {...listeners}
-        className="cursor-grab select-none text-sidebar-foreground/40 opacity-0 group-hover/board-row:opacity-100 group-data-[collapsible=icon]:hidden"
-      >
-        <GripVertical className="h-3.5 w-3.5" />
-      </span>
-      <BoardIconPicker
-        boardId={board.id}
-        boardName={board.name}
-        logoUrl={board.icon}
-        onChange={(logoUrl) =>
-          startTransition(async () => {
-            await setBoardIcon(board.id, logoUrl);
-            router.refresh();
-          })
-        }
-      />
+      {canEdit && (
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab select-none text-sidebar-foreground/40 opacity-0 group-hover/board-row:opacity-100 group-data-[collapsible=icon]:hidden"
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </span>
+      )}
+      {canEdit ? (
+        <BoardIconPicker
+          boardId={board.id}
+          boardName={board.name}
+          logoUrl={board.icon}
+          onChange={(logoUrl) =>
+            startTransition(async () => {
+              await setBoardIcon(board.id, logoUrl);
+              router.refresh();
+            })
+          }
+        />
+      ) : (
+        <span
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold text-white"
+          style={{ backgroundColor: board.icon ? undefined : iconColor }}
+        >
+          {board.icon ? (
+            <Image src={board.icon} alt="" width={20} height={20} className="h-full w-full rounded-md object-cover" />
+          ) : (
+            board.name.slice(0, 1).toUpperCase()
+          )}
+        </span>
+      )}
       <SidebarMenuButton
         isActive={isActive}
         tooltip={board.name}
@@ -143,65 +163,68 @@ function BoardRow({
             router.refresh();
           }}
           className="truncate"
+          readOnly={!canEdit}
         />
       </SidebarMenuButton>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          className="shrink-0 rounded-md p-1 text-sidebar-foreground/40 opacity-0 hover:bg-sidebar-accent group-hover/board-row:opacity-100 group-data-[collapsible=icon]:hidden"
-          aria-label="Opções do quadro"
-        >
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {folders.length > 0 && (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Mover para pasta</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {board.folderId !== null && (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      startTransition(async () => {
-                        await moveBoardToFolder(board.id, null);
-                        router.refresh();
-                      })
-                    }
-                  >
-                    Sem pasta
-                  </DropdownMenuItem>
-                )}
-                {folders
-                  .filter((folder) => folder.id !== board.folderId)
-                  .map((folder) => (
+      {canEdit && (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className="shrink-0 rounded-md p-1 text-sidebar-foreground/40 opacity-0 hover:bg-sidebar-accent group-hover/board-row:opacity-100 group-data-[collapsible=icon]:hidden"
+            aria-label="Opções do quadro"
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {folders.length > 0 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Mover para pasta</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {board.folderId !== null && (
                     <DropdownMenuItem
-                      key={folder.id}
                       onClick={() =>
                         startTransition(async () => {
-                          await moveBoardToFolder(board.id, folder.id);
+                          await moveBoardToFolder(board.id, null);
                           router.refresh();
                         })
                       }
                     >
-                      {folder.name}
+                      Sem pasta
                     </DropdownMenuItem>
-                  ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() =>
-              startTransition(async () => {
-                await deleteBoard(board.id);
-                router.refresh();
-              })
-            }
-          >
-            <Trash2 />
-            Apagar quadro
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+                  )}
+                  {folders
+                    .filter((folder) => folder.id !== board.folderId)
+                    .map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onClick={() =>
+                          startTransition(async () => {
+                            await moveBoardToFolder(board.id, folder.id);
+                            router.refresh();
+                          })
+                        }
+                      >
+                        {folder.name}
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() =>
+                startTransition(async () => {
+                  await deleteBoard(board.id);
+                  router.refresh();
+                })
+              }
+            >
+              <Trash2 />
+              Apagar quadro
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </SidebarMenuItem>
   );
 }
@@ -211,17 +234,20 @@ function FolderSection({
   boards,
   workspaceSlug,
   folders,
+  canEdit,
 }: {
   folder: FolderSummary;
   boards: BoardSummary[];
   workspaceSlug: string;
   folders: FolderSummary[];
+  canEdit: boolean;
 }) {
   const [open, setOpen] = useState(true);
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `folder-${folder.id}`,
+    disabled: !canEdit,
   });
 
   return (
@@ -239,19 +265,28 @@ function FolderSection({
         >
           <ChevronRight className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
         </button>
-        <span {...attributes} {...listeners} className="cursor-grab select-none text-sidebar-foreground/40">
-          <GripVertical className="h-3.5 w-3.5" />
-        </span>
-        <ColorSwatchPicker
-          value={folder.color ?? COLOR_PALETTE[0]}
-          size="sm"
-          onChange={(color) =>
-            startTransition(async () => {
-              await setFolderColor(folder.id, color);
-              router.refresh();
-            })
-          }
-        />
+        {canEdit && (
+          <span {...attributes} {...listeners} className="cursor-grab select-none text-sidebar-foreground/40">
+            <GripVertical className="h-3.5 w-3.5" />
+          </span>
+        )}
+        {canEdit ? (
+          <ColorSwatchPicker
+            value={folder.color ?? COLOR_PALETTE[0]}
+            size="sm"
+            onChange={(color) =>
+              startTransition(async () => {
+                await setFolderColor(folder.id, color);
+                router.refresh();
+              })
+            }
+          />
+        ) : (
+          <span
+            className="h-3 w-3 shrink-0 rounded-full"
+            style={{ backgroundColor: folder.color ?? COLOR_PALETTE[0] }}
+          />
+        )}
         <InlineEditableText
           value={folder.name}
           onCommit={async (next) => {
@@ -259,36 +294,39 @@ function FolderSection({
             router.refresh();
           }}
           className="min-w-0 flex-1 truncate text-xs font-semibold"
+          readOnly={!canEdit}
         />
         <span className="text-[10px] text-sidebar-foreground/50">{boards.length}</span>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className="shrink-0 rounded-md p-1 text-sidebar-foreground/40 opacity-0 hover:bg-sidebar-accent group-hover/folder-row:opacity-100"
-            aria-label="Opções da pasta"
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() =>
-                startTransition(async () => {
-                  await deleteFolder(folder.id);
-                  router.refresh();
-                })
-              }
+        {canEdit && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="shrink-0 rounded-md p-1 text-sidebar-foreground/40 opacity-0 hover:bg-sidebar-accent group-hover/folder-row:opacity-100"
+              aria-label="Opções da pasta"
             >
-              <Trash2 />
-              Apagar pasta
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() =>
+                  startTransition(async () => {
+                    await deleteFolder(folder.id);
+                    router.refresh();
+                  })
+                }
+              >
+                <Trash2 />
+                Apagar pasta
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       {open && (
         <div className="flex flex-col gap-0.5 pl-4">
           <SortableContext items={boards.map((b) => `board-${b.id}`)} strategy={verticalListSortingStrategy}>
             {boards.map((board) => (
-              <BoardRow key={board.id} board={board} workspaceSlug={workspaceSlug} folders={folders} />
+              <BoardRow key={board.id} board={board} workspaceSlug={workspaceSlug} folders={folders} canEdit={canEdit} />
             ))}
           </SortableContext>
           {boards.length === 0 && (
@@ -305,11 +343,15 @@ export function AppSidebar({
   workspaceName,
   boards: initialBoards,
   folders: initialFolders,
+  isAdmin = false,
+  canEdit = true,
 }: {
   workspaceSlug: string;
   workspaceName: string;
   boards: BoardSummary[];
   folders: FolderSummary[];
+  isAdmin?: boolean;
+  canEdit?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -340,6 +382,7 @@ export function AppSidebar({
   const unfoldered = boards.filter((b) => b.folderId === null);
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!canEdit) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const activeId = String(active.id);
@@ -419,13 +462,14 @@ export function AppSidebar({
                       boards={boards.filter((b) => b.folderId === folder.id)}
                       workspaceSlug={workspaceSlug}
                       folders={folders}
+                      canEdit={canEdit}
                     />
                   ))}
                 </SortableContext>
                 <SidebarMenu>
                   <SortableContext items={unfoldered.map((b) => `board-${b.id}`)} strategy={verticalListSortingStrategy}>
                     {unfoldered.map((board) => (
-                      <BoardRow key={board.id} board={board} workspaceSlug={workspaceSlug} folders={folders} />
+                      <BoardRow key={board.id} board={board} workspaceSlug={workspaceSlug} folders={folders} canEdit={canEdit} />
                     ))}
                   </SortableContext>
                 </SidebarMenu>
@@ -435,84 +479,98 @@ export function AppSidebar({
               </div>
             </DndContext>
 
-            <div className="mt-2 flex flex-col gap-1 group-data-[collapsible=icon]:items-center">
-              {addingBoard ? (
-                <input
-                  autoFocus
-                  value={newBoardName}
-                  onChange={(event) => setNewBoardName(event.target.value)}
-                  onBlur={submitNewBoard}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      submitNewBoard();
-                    }
-                    if (event.key === "Escape") {
-                      setAddingBoard(false);
-                      setNewBoardName("");
-                    }
-                  }}
-                  placeholder="Nome do quadro"
-                  className="rounded-md border border-dashed border-sidebar-border bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-ring group-data-[collapsible=icon]:hidden"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAddingBoard(true)}
-                  title="Novo quadro"
-                  className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
-                >
-                  <Plus className="h-3.5 w-3.5 shrink-0" />
-                  <span className="group-data-[collapsible=icon]:hidden">Quadro</span>
-                </button>
-              )}
-              {addingFolder ? (
-                <form
-                  className="group-data-[collapsible=icon]:hidden"
-                  action={(formData) => {
-                    setAddingFolder(false);
-                    startTransition(async () => {
-                      await createFolder(workspaceSlug, {}, formData);
-                      router.refresh();
-                    });
-                  }}
-                >
+            {canEdit && (
+              <div className="mt-2 flex flex-col gap-1 group-data-[collapsible=icon]:items-center">
+                {addingBoard ? (
                   <input
                     autoFocus
-                    name="name"
-                    value={newFolderName}
-                    onChange={(event) => setNewFolderName(event.target.value)}
-                    onBlur={(event) => {
-                      if (!newFolderName.trim()) setAddingFolder(false);
-                      else event.currentTarget.form?.requestSubmit();
-                    }}
+                    value={newBoardName}
+                    onChange={(event) => setNewBoardName(event.target.value)}
+                    onBlur={submitNewBoard}
                     onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        submitNewBoard();
+                      }
                       if (event.key === "Escape") {
-                        setAddingFolder(false);
-                        setNewFolderName("");
+                        setAddingBoard(false);
+                        setNewBoardName("");
                       }
                     }}
-                    placeholder="Nome da pasta"
-                    className="w-full rounded-md border border-dashed border-sidebar-border bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-ring"
+                    placeholder="Nome do quadro"
+                    className="rounded-md border border-dashed border-sidebar-border bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-ring group-data-[collapsible=icon]:hidden"
                   />
-                </form>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAddingFolder(true)}
-                  title="Nova pasta"
-                  className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden"
-                >
-                  <Folder className="h-3.5 w-3.5" />
-                  Pasta
-                </button>
-              )}
-            </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddingBoard(true)}
+                    title="Novo quadro"
+                    className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                    <span className="group-data-[collapsible=icon]:hidden">Quadro</span>
+                  </button>
+                )}
+                {addingFolder ? (
+                  <form
+                    className="group-data-[collapsible=icon]:hidden"
+                    action={(formData) => {
+                      setAddingFolder(false);
+                      startTransition(async () => {
+                        await createFolder(workspaceSlug, {}, formData);
+                        router.refresh();
+                      });
+                    }}
+                  >
+                    <input
+                      autoFocus
+                      name="name"
+                      value={newFolderName}
+                      onChange={(event) => setNewFolderName(event.target.value)}
+                      onBlur={(event) => {
+                        if (!newFolderName.trim()) setAddingFolder(false);
+                        else event.currentTarget.form?.requestSubmit();
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                          setAddingFolder(false);
+                          setNewFolderName("");
+                        }
+                      }}
+                      placeholder="Nome da pasta"
+                      className="w-full rounded-md border border-dashed border-sidebar-border bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:border-ring"
+                    />
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddingFolder(true)}
+                    title="Nova pasta"
+                    className="flex items-center gap-1.5 rounded-md border border-dashed border-sidebar-border px-2 py-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden"
+                  >
+                    <Folder className="h-3.5 w-3.5" />
+                    Pasta
+                  </button>
+                )}
+              </div>
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          {isAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                render={<Link href="/admin" />}
+                tooltip="Trocar empresa"
+                className="group-data-[collapsible=icon]:justify-center"
+              >
+                <Building2 />
+                <span className="group-data-[collapsible=icon]:hidden">Trocar empresa</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={pathname === `/${workspaceSlug}/settings`}

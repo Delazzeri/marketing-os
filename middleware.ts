@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-export async function proxy(request: NextRequest) {
+// Renamed from proxy.ts — Next.js only registers route-level middleware from
+// a file literally named middleware.ts at the project root; the old
+// filename meant this never actually ran (confirmed via an empty
+// .next/server/middleware-manifest.json). RLS was already the real
+// enforcement layer per CLAUDE.md, so this is a defense-in-depth fix, not a
+// new security boundary.
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const isPublicRoute =

@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserContext } from "@/lib/auth/roles";
 
-// v1 is mono-workspace (see CLAUDE.md) — a logged-in user has at most one
-// workspace membership, so this just resolves it and forwards there instead
-// of rendering a placeholder home page.
+// Admins manage multiple workspaces and land in /admin instead of any
+// specific one. Everyone else keeps the old mono-workspace behavior: resolve
+// their first/only membership and forward there.
 export default async function Home() {
   const supabase = await createClient();
 
@@ -12,6 +13,9 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/auth/login");
+
+  const { isAdmin } = await getCurrentUserContext();
+  if (isAdmin) redirect("/admin");
 
   const { data: membership } = await supabase
     .from("workspace_members")

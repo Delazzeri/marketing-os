@@ -7,31 +7,32 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { avatarColorFor } from "@/lib/avatar-color";
+import { ROLE_LABELS, type WorkspaceRole } from "@/lib/roles";
 import { X } from "lucide-react";
 
 interface MemberRow {
   membershipId: number;
   userId: string;
   name: string;
-  role: "owner" | "member";
+  role: WorkspaceRole;
 }
 
-// "Leitor" is a future role — workspace_role only has owner/member today
-// (see lib/actions/workspace-members.ts). Badges are cosmetic labels over
-// that same two-value role, not a third permission tier.
-const ROLE_LABELS: Record<MemberRow["role"], string> = {
-  owner: "Admin",
-  member: "Membro",
-};
-
-export function TeamPanel({ workspaceId, members }: { workspaceId: number; members: MemberRow[] }) {
+export function TeamPanel({
+  workspaceId,
+  members,
+  canManageTeam = false,
+}: {
+  workspaceId: number;
+  members: MemberRow[];
+  canManageTeam?: boolean;
+}) {
   const [, startTransition] = useTransition();
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">Equipe</h2>
-        <InvitePersonModal workspaceId={workspaceId} />
+        {canManageTeam && <InvitePersonModal workspaceId={workspaceId} />}
       </div>
 
       <ul className="flex flex-col gap-1">
@@ -49,10 +50,10 @@ export function TeamPanel({ workspaceId, members }: { workspaceId: number; membe
               </AvatarFallback>
             </Avatar>
             <span className="flex-1 text-sm">{member.name}</span>
-            <Badge variant={member.role === "owner" ? "default" : "secondary"}>
+            <Badge variant={member.role === "owner" || member.role === "coordinator" ? "default" : "secondary"}>
               {ROLE_LABELS[member.role]}
             </Badge>
-            {member.role !== "owner" && (
+            {canManageTeam && member.role !== "owner" && (
               <Button
                 type="button"
                 variant="ghost"

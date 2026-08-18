@@ -8,11 +8,13 @@ export function InlineEditableText({
   onCommit,
   className,
   inputClassName,
+  readOnly = false,
 }: {
   value: string;
   onCommit: (next: string) => void | Promise<void>;
   className?: string;
   inputClassName?: string;
+  readOnly?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -57,10 +59,14 @@ export function InlineEditableText({
 
   return (
     <span
-      onDoubleClick={() => {
-        setDraft(value);
-        setEditing(true);
-      }}
+      onDoubleClick={
+        readOnly
+          ? undefined
+          : () => {
+              setDraft(value);
+              setEditing(true);
+            }
+      }
       className={cn("truncate", className)}
     >
       {value}

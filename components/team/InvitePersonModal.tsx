@@ -5,6 +5,14 @@ import { inviteMember, type InviteMemberFormState } from "@/lib/actions/workspac
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ROLE_LABELS, ASSIGNABLE_ROLES, type WorkspaceRole } from "@/lib/roles";
 import { UserPlus } from "lucide-react";
 
 const initialState: InviteMemberFormState = {};
@@ -24,6 +32,7 @@ export function InvitePersonModal({
   trigger?: ReactElement;
 }) {
   const [open, setOpen] = useState(false);
+  const [role, setRole] = useState<WorkspaceRole>("member");
   const [state, formAction, pending] = useActionState(inviteMember.bind(null, workspaceId), initialState);
   const [wasPending, setWasPending] = useState(false);
 
@@ -49,10 +58,23 @@ export function InvitePersonModal({
           }}
           className="flex flex-col gap-3"
         >
-          <p className="text-xs text-muted-foreground">
-            A pessoa precisa já ter uma conta. O convite adiciona ela ao workspace como Membro.
-          </p>
+          <p className="text-xs text-muted-foreground">A pessoa precisa já ter uma conta criada pelo admin.</p>
           <Input name="email" type="email" placeholder="email@exemplo.com" required />
+
+          <input type="hidden" name="role" value={role} />
+          <Select value={role} onValueChange={(value) => setRole(value as WorkspaceRole)}>
+            <SelectTrigger className="w-full">
+              <SelectValue>{ROLE_LABELS[role]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {ASSIGNABLE_ROLES.map((assignableRole) => (
+                <SelectItem key={assignableRole} value={assignableRole}>
+                  {ROLE_LABELS[assignableRole]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Button type="submit" disabled={pending}>
             {pending ? "Convidando..." : "Convidar"}
           </Button>

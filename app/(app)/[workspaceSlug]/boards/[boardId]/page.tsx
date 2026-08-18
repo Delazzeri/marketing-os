@@ -11,6 +11,8 @@ import { BoardSettingsDialog } from "@/components/boards/BoardSettingsDialog";
 import { computeOverdueItemIds } from "@/lib/automations/overdue";
 import { getWorkspaceMembersWithEmail } from "@/lib/supabase/user-lookup";
 import { avatarColorFor } from "@/lib/avatar-color";
+import { getCurrentUserContext } from "@/lib/auth/roles";
+import { canWrite, canManageTeam as computeCanManageTeam } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Zap, Link2 } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
@@ -61,18 +63,9 @@ export default async function BoardPage({
 
   const members = await getWorkspaceMembersWithEmail(board.workspace_id as number);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: currentMembership } = user
-    ? await supabase
-        .from("workspace_members")
-        .select("role")
-        .eq("workspace_id", board.workspace_id)
-        .eq("user_id", user.id)
-        .maybeSingle()
-    : { data: null };
-  const currentUserRole = (currentMembership?.role as "owner" | "member" | null) ?? null;
+  const { isAdmin, workspaceRole: currentUserRole } = await getCurrentUserContext(board.workspace_id as number);
+  const canEdit = canWrite(currentUserRole, isAdmin);
+  const canManageTeam = computeCanManageTeam(currentUserRole, isAdmin);
 
   const boardColumns = (columns ?? []).map((column) => ({
     id: column.id,
@@ -136,6 +129,9 @@ export default async function BoardPage({
           workspaceId={board.workspace_id as number}
           members={members}
           currentUserRole={currentUserRole}
+          isAdmin={isAdmin}
+          canEdit={canEdit}
+          canManageTeam={canManageTeam}
         />
       </div>
 
@@ -150,42 +146,47 @@ export default async function BoardPage({
         dashboards={boardDashboards}
         widgets={boardWidgets}
         itemColumnWidth={board.item_column_width as number | null}
+        canEdit={canEdit}
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <CreateGroupForm boardId={board.id} />
-      </div>
+      {canEdit && (
+        <div className="flex flex-wrap items-center gap-2">
+          <CreateGroupForm boardId={board.id} />
+        </div>
+      )}
 
-      <div className="flex items-center justify-end gap-1 border-t border-border pt-3">
-        <BoardSettingsDialog
-          title="Automações"
-          trigger={
-            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
-              <Zap />
-              Automações
-            </Button>
-          }
-        >
-          <AutomationsPanel
-            boardId={board.id}
-            workspaceId={board.workspace_id as number}
-            columns={boardColumns}
-            groups={groups ?? []}
-          />
-        </BoardSettingsDialog>
+      {canEdit && (
+        <div className="flex items-center justify-end gap-1 border-t border-border pt-3">
+          <BoardSettingsDialog
+            title="Automações"
+            trigger={
+              <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
+                <Zap />
+                Automações
+              </Button>
+            }
+          >
+            <AutomationsPanel
+              boardId={board.id}
+              workspaceId={board.workspace_id as number}
+              columns={boardColumns}
+              groups={groups ?? []}
+            />
+          </BoardSettingsDialog>
 
-        <BoardSettingsDialog
-          title="Portal do cliente"
-          trigger={
-            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
-              <Link2 />
-              Portal do cliente
-            </Button>
-          }
-        >
-          <PortalTokenPanel boardId={board.id} />
-        </BoardSettingsDialog>
-      </div>
+          <BoardSettingsDialog
+            title="Portal do cliente"
+            trigger={
+              <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
+                <Link2 />
+                Portal do cliente
+              </Button>
+            }
+          >
+            <PortalTokenPanel boardId={board.id} />
+          </BoardSettingsDialog>
+        </div>
+      )}
     </div>
   );
 }
