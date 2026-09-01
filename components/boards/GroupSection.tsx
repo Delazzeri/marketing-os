@@ -72,6 +72,9 @@ export function GroupSection({
   overdueItemIds,
   itemColumnWidth,
   canEdit = true,
+  onGroupDeleted,
+  onItemCreated,
+  onItemDeleted,
 }: {
   boardId: number;
   workspaceSlug: string;
@@ -81,6 +84,9 @@ export function GroupSection({
   overdueItemIds?: Set<number>;
   itemColumnWidth?: number | null;
   canEdit?: boolean;
+  onGroupDeleted?: (groupId: number) => void;
+  onItemCreated?: (item: { id: number; title: string; groupId: number }) => void;
+  onItemDeleted?: (itemId: number) => void;
 }) {
   const [, startTransition] = useTransition();
   const [collapsed, setCollapsed] = useState(false);
@@ -138,7 +144,9 @@ export function GroupSection({
         )}
         <Badge variant="secondary">{items.length}</Badge>
         {collapsed && <GroupFooterProgress items={items} statusColumn={statusColumn} />}
-        {canEdit && <DeleteGroupButton groupId={group.id} groupName={group.name} />}
+        {canEdit && (
+          <DeleteGroupButton groupId={group.id} groupName={group.name} onDeleted={onGroupDeleted} />
+        )}
       </div>
 
       {!collapsed && (
@@ -153,11 +161,14 @@ export function GroupSection({
               overdueItemIds={overdueItemIds}
               itemColumnWidth={itemColumnWidth}
               canEdit={canEdit}
+              onItemDeleted={onItemDeleted}
             />
           </div>
 
           <div className="flex items-center gap-2 pr-3 pb-3">
-            {canEdit && <CreateItemForm boardId={boardId} groupId={group.id} />}
+            {canEdit && (
+              <CreateItemForm boardId={boardId} groupId={group.id} onCreated={onItemCreated} />
+            )}
             <GroupFooterProgress items={items} statusColumn={statusColumn} />
           </div>
         </>

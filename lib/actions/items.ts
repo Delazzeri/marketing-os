@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { groupFieldsSchema, itemFieldsSchema } from "@/lib/validation/boards";
 import { runAutomations } from "@/lib/actions/automations";
 
-export type GroupFormState = { error?: string };
-export type ItemFormState = { error?: string };
+export type GroupFormState = { error?: string; group?: { id: number; name: string; color: string | null } };
+export type ItemFormState = { error?: string; item?: { id: number; title: string; groupId: number } };
 
 export async function createGroup(
   boardId: number,
@@ -25,16 +25,20 @@ export async function createGroup(
     return { error: "Confira os campos obrigatórios." };
   }
 
-  const { error: insertError } = await supabase.from("groups").insert({
-    board_id: boardId,
-    name: fields.name,
-    color: fields.color ?? null,
-  });
+  const { data: created, error: insertError } = await supabase
+    .from("groups")
+    .insert({
+      board_id: boardId,
+      name: fields.name,
+      color: fields.color ?? null,
+    })
+    .select("id, name, color")
+    .single();
 
   if (insertError) return { error: insertError.message };
 
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
-  return {};
+  return { group: created };
 }
 
 export async function deleteGroup(groupId: number) {
@@ -110,7 +114,7 @@ export async function createItem(
   });
 
   revalidatePath("/[workspaceSlug]/boards/[boardId]", "page");
-  return {};
+  return { item: { id: newItem.id, title: fields.title, groupId: fields.groupId } };
 }
 
 /**

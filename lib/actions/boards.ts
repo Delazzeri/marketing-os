@@ -11,7 +11,7 @@ import {
 } from "@/lib/validation/boards";
 
 export type BoardFormState = { error?: string };
-export type FolderFormState = { error?: string };
+export type FolderFormState = { error?: string; folder?: { id: number; name: string; color: string | null } };
 
 function parseFields(formData: FormData) {
   return boardFieldsSchema.parse({
@@ -193,15 +193,19 @@ export async function createFolder(
     .single();
   if (workspaceError || !workspace) return { error: "Workspace não encontrado." };
 
-  const { error: insertError } = await supabase.from("board_folders").insert({
-    workspace_id: workspace.id,
-    name: fields.name,
-    color: fields.color ?? null,
-  });
+  const { data: created, error: insertError } = await supabase
+    .from("board_folders")
+    .insert({
+      workspace_id: workspace.id,
+      name: fields.name,
+      color: fields.color ?? null,
+    })
+    .select("id, name, color")
+    .single();
   if (insertError) return { error: insertError.message };
 
   revalidatePath("/[workspaceSlug]", "layout");
-  return {};
+  return { folder: created };
 }
 
 export async function renameFolder(folderId: number, name: string) {

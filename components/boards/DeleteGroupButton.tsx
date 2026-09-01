@@ -16,7 +16,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Trash2 } from "lucide-react";
 
-export function DeleteGroupButton({ groupId, groupName }: { groupId: number; groupName: string }) {
+export function DeleteGroupButton({
+  groupId,
+  groupName,
+  onDeleted,
+}: {
+  groupId: number;
+  groupName: string;
+  onDeleted?: (groupId: number) => void;
+}) {
   const [, startTransition] = useTransition();
 
   return (
@@ -45,7 +53,9 @@ export function DeleteGroupButton({ groupId, groupName }: { groupId: number; gro
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            onClick={() => startTransition(() => deleteGroup(groupId))}
+            onClick={() =>
+              onDeleted ? onDeleted(groupId) : startTransition(() => deleteGroup(groupId))
+            }
           >
             Apagar
           </AlertDialogAction>

@@ -48,11 +48,12 @@ function StickyNote({ id, data }: NodeProps<{ text: string; color: string; canEd
   const noteId = Number(id);
   const [, startTransition] = useTransition();
   const [text, setText] = useState(data.text);
+  const [color, setColor] = useState(data.color);
 
   return (
     <div
       className="group relative flex min-h-[100px] w-[180px] flex-col gap-1 rounded-md p-3 shadow-md"
-      style={{ backgroundColor: data.color }}
+      style={{ backgroundColor: color }}
     >
       <Handle type="target" position={Position.Left} className="!h-3 !w-3" />
       <Handle type="source" position={Position.Right} className="!h-3 !w-3" />
@@ -69,26 +70,40 @@ function StickyNote({ id, data }: NodeProps<{ text: string; color: string; canEd
       <textarea
         value={text}
         readOnly={!data.canEdit}
-        onChange={(event) => setText(event.target.value)}
+        onChange={(event) => {
+          setText(event.target.value);
+          const el = event.target;
+          el.style.height = "auto";
+          el.style.height = `${el.scrollHeight}px`;
+        }}
+        ref={(el) => {
+          if (el) {
+            el.style.height = "auto";
+            el.style.height = `${el.scrollHeight}px`;
+          }
+        }}
         onBlur={() => {
           if (text !== data.text) startTransition(() => updateNoteText(noteId, text));
         }}
-        className="nodrag min-h-[70px] flex-1 resize-none bg-transparent text-sm text-black/80 outline-none placeholder:text-black/40"
+        className="nodrag min-h-[70px] resize-none overflow-hidden bg-transparent text-sm text-black/80 outline-none placeholder:text-black/40"
         placeholder="Escreva algo..."
       />
       {data.canEdit && (
         <div className="nodrag flex items-center gap-1 opacity-0 group-hover:opacity-100">
-          {WHITEBOARD_NOTE_COLORS.map((color) => (
+          {WHITEBOARD_NOTE_COLORS.map((swatch) => (
             <button
-              key={color}
+              key={swatch}
               type="button"
-              onClick={() => startTransition(() => setNoteColor(noteId, color))}
+              onClick={() => {
+                setColor(swatch);
+                startTransition(() => setNoteColor(noteId, swatch));
+              }}
               className={cn(
                 "h-3.5 w-3.5 rounded-full border border-black/20",
-                data.color === color && "ring-2 ring-black/40",
+                color === swatch && "ring-2 ring-black/40",
               )}
-              style={{ backgroundColor: color }}
-              aria-label={color}
+              style={{ backgroundColor: swatch }}
+              aria-label={swatch}
             />
           ))}
         </div>
@@ -185,8 +200,25 @@ export function WhiteboardView({
   );
 
   function handleAddNote() {
-    startTransition(() => {
-      void createNote(boardId, { x: 80 + Math.random() * 200, y: 80 + Math.random() * 200 });
+    const position = { x: 80 + Math.random() * 200, y: 80 + Math.random() * 200 };
+    const tempId = `temp-${Date.now()}`;
+    const tempNode: Node = {
+      id: tempId,
+      type: "stickyNote",
+      position,
+      data: { text: "", color: WHITEBOARD_NOTE_COLORS[0], canEdit },
+      draggable: canEdit,
+    };
+    setNodes((current) => [...current, tempNode]);
+    startTransition(async () => {
+      try {
+        const created = await createNote(boardId, position);
+        setNodes((current) =>
+          current.map((node) => (node.id === tempId ? { ...node, id: String(created.id) } : node)),
+        );
+      } catch {
+        setNodes((current) => current.filter((node) => node.id !== tempId));
+      }
     });
   }
 

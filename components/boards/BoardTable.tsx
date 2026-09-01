@@ -183,6 +183,7 @@ function SortableItemRow({
   onSelectChange,
   itemColumnWidth,
   canEdit,
+  onDelete,
 }: {
   item: ItemData;
   columns: ColumnData[];
@@ -193,8 +194,8 @@ function SortableItemRow({
   onSelectChange: (checked: boolean) => void;
   itemColumnWidth: number;
   canEdit: boolean;
+  onDelete: () => void;
 }) {
-  const [, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `item-${item.id}`,
     disabled: !canEdit,
@@ -241,7 +242,7 @@ function SortableItemRow({
               type="button"
               variant="ghost"
               size="icon-xs"
-              onClick={() => startTransition(() => deleteItem(item.id))}
+              onClick={onDelete}
               className="ml-auto shrink-0 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive"
               title="Excluir item"
             >
@@ -281,6 +282,7 @@ export function BoardTable({
   overdueItemIds,
   itemColumnWidth,
   canEdit = true,
+  onItemDeleted,
 }: {
   boardId: number;
   workspaceSlug: string;
@@ -289,6 +291,7 @@ export function BoardTable({
   overdueItemIds?: Set<number>;
   itemColumnWidth?: number | null;
   canEdit?: boolean;
+  onItemDeleted?: (itemId: number) => void;
 }) {
   const resolvedItemColumnWidth = itemColumnWidth ?? DEFAULT_ITEM_COLUMN_WIDTH;
   const [orderedColumns, setOrderedColumns] = useState(columns);
@@ -317,7 +320,21 @@ export function BoardTable({
   function handleDeleteSelected() {
     const ids = Array.from(selectedIds);
     setSelectedIds(new Set());
-    startTransition(() => deleteItems(ids));
+    setOrderedItems((current) => current.filter((item) => !ids.includes(item.id)));
+    if (onItemDeleted) {
+      for (const id of ids) onItemDeleted(id);
+    } else {
+      startTransition(() => deleteItems(ids));
+    }
+  }
+
+  function handleDeleteItem(itemId: number) {
+    setOrderedItems((current) => current.filter((item) => item.id !== itemId));
+    if (onItemDeleted) {
+      onItemDeleted(itemId);
+    } else {
+      startTransition(() => deleteItem(itemId));
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -404,6 +421,7 @@ export function BoardTable({
                     onSelectChange={(checked) => toggleSelect(item.id, checked)}
                     itemColumnWidth={resolvedItemColumnWidth}
                     canEdit={canEdit}
+                    onDelete={() => handleDeleteItem(item.id)}
                   />
                 ))}
               </SortableContext>

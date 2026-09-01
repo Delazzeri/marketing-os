@@ -12,7 +12,7 @@ import {
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { GroupSection } from "@/components/boards/GroupSection";
 import { BoardToolbar, type SortState } from "@/components/boards/BoardToolbar";
-import { reorderGroups } from "@/lib/actions/items";
+import { reorderGroups, deleteGroup as deleteGroupAction, deleteItem as deleteItemAction } from "@/lib/actions/items";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 interface ColumnData {
@@ -66,17 +66,55 @@ export function BoardContent({
   const [filters, setFilters] = useState<Record<number, Set<string>>>({});
   const [sort, setSort] = useState<SortState>({ columnId: null, direction: "asc" });
   const [orderedGroups, setOrderedGroups] = useState(groups);
+  const [localItems, setLocalItems] = useState(items);
   const [, startTransition] = useTransition();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const dndId = useId();
 
   // Server Component parent only re-renders after a mutation triggers
-  // revalidatePath — local state exists purely for optimistic drag-reorder,
-  // same re-sync-on-prop-change pattern AppSidebar.tsx uses for boards/folders.
+  // revalidatePath — local state exists so create/delete of groups and items
+  // (below) can reflect immediately instead of waiting for that round-trip;
+  // this re-sync picks up the revalidated data once it does land, same
+  // pattern AppSidebar.tsx uses for boards/folders.
   const [prevGroups, setPrevGroups] = useState(groups);
   if (groups !== prevGroups) {
     setPrevGroups(groups);
     setOrderedGroups(groups);
+  }
+  const [prevItems, setPrevItems] = useState(items);
+  if (items !== prevItems) {
+    setPrevItems(items);
+    setLocalItems(items);
+  }
+
+  function handleGroupDeleted(groupId: number) {
+    const prev = orderedGroups;
+    setOrderedGroups((current) => current.filter((g) => g.id !== groupId));
+    startTransition(async () => {
+      try {
+        await deleteGroupAction(groupId);
+      } catch {
+        setOrderedGroups(prev);
+      }
+    });
+  }
+
+  function handleItemCreated(item: { id: number; title: string; groupId: number }) {
+    setLocalItems((current) =>
+      current.some((i) => i.id === item.id) ? current : [...current, { ...item, values: {} }],
+    );
+  }
+
+  function handleItemDeleted(itemId: number) {
+    const prev = localItems;
+    setLocalItems((current) => current.filter((i) => i.id !== itemId));
+    startTransition(async () => {
+      try {
+        await deleteItemAction(itemId);
+      } catch {
+        setLocalItems(prev);
+      }
+    });
   }
 
   function handleGroupDragEnd(event: DragEndEvent) {
@@ -121,7 +159,7 @@ export function BoardContent({
   }
 
   const filteredItems = useMemo(() => {
-    let result = items;
+    let result = localItems;
 
     const trimmedSearch = search.trim().toLowerCase();
     if (trimmedSearch) {
@@ -147,7 +185,7 @@ export function BoardContent({
     }
 
     return result;
-  }, [items, search, filters, sort]);
+  }, [localItems, search, filters, sort]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -179,6 +217,9 @@ export function BoardContent({
                   overdueItemIds={overdueItemIds}
                   itemColumnWidth={itemColumnWidth}
                   canEdit={canEdit}
+                  onGroupDeleted={handleGroupDeleted}
+                  onItemCreated={handleItemCreated}
+                  onItemDeleted={handleItemDeleted}
                 />
               );
             })}

@@ -3,7 +3,7 @@
 import { useId, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -100,7 +100,6 @@ function BoardRow({
   canEdit: boolean;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `board-${board.id}`,
@@ -116,7 +115,7 @@ function BoardRow({
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
       className={cn(
         "group/board-row relative flex items-center gap-1 border-l-2",
-        "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-l-0",
+        "group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-l-0 group-data-[collapsible=icon]:py-1",
         isActive ? "border-primary" : "border-transparent",
       )}
     >
@@ -144,7 +143,6 @@ function BoardRow({
           onChange={(logoUrl) =>
             startTransition(async () => {
               await setBoardIcon(board.id, logoUrl);
-              router.refresh();
             })
           }
         />
@@ -170,7 +168,6 @@ function BoardRow({
           value={board.name}
           onCommit={async (next) => {
             await renameBoard(board.id, next);
-            router.refresh();
           }}
           className="truncate"
           readOnly={!canEdit}
@@ -194,7 +191,6 @@ function BoardRow({
                       onClick={() =>
                         startTransition(async () => {
                           await moveBoardToFolder(board.id, null);
-                          router.refresh();
                         })
                       }
                     >
@@ -209,7 +205,6 @@ function BoardRow({
                         onClick={() =>
                           startTransition(async () => {
                             await moveBoardToFolder(board.id, folder.id);
-                            router.refresh();
                           })
                         }
                       >
@@ -225,7 +220,6 @@ function BoardRow({
               onClick={() =>
                 startTransition(async () => {
                   await deleteBoard(board.id);
-                  router.refresh();
                 })
               }
             >
@@ -253,7 +247,6 @@ function FolderSection({
   canEdit: boolean;
 }) {
   const [open, setOpen] = useState(true);
-  const router = useRouter();
   const [, startTransition] = useTransition();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `folder-${folder.id}`,
@@ -287,7 +280,6 @@ function FolderSection({
             onChange={(color) =>
               startTransition(async () => {
                 await setFolderColor(folder.id, color);
-                router.refresh();
               })
             }
           />
@@ -301,7 +293,6 @@ function FolderSection({
           value={folder.name}
           onCommit={async (next) => {
             await renameFolder(folder.id, next);
-            router.refresh();
           }}
           className="min-w-0 flex-1 truncate text-xs font-semibold"
           readOnly={!canEdit}
@@ -321,7 +312,6 @@ function FolderSection({
                 onClick={() =>
                   startTransition(async () => {
                     await deleteFolder(folder.id);
-                    router.refresh();
                   })
                 }
               >
@@ -364,13 +354,13 @@ export function AppSidebar({
   canEdit?: boolean;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [boards, setBoards] = useState(initialBoards);
   const [folders, setFolders] = useState(initialFolders);
   // initialBoards/initialFolders come from the Server Component layout, which
-  // only re-renders after router.refresh() (each mutation below triggers one).
-  // Local state exists solely for optimistic drag-reorder; without re-syncing
-  // here on every prop change, it would never pick up the revalidated data.
+  // re-renders when revalidatePath (called by each server action in
+  // lib/actions/boards.ts) invalidates it on next navigation. Local state
+  // exists so mutations below reflect immediately without waiting for that;
+  // this re-sync picks up the revalidated data once a navigation does occur.
   const [prevInitialBoards, setPrevInitialBoards] = useState(initialBoards);
   if (initialBoards !== prevInitialBoards) {
     setPrevInitialBoards(initialBoards);
@@ -403,7 +393,6 @@ export function AppSidebar({
       setFolders(next);
       startTransition(async () => {
         await reorderFolders(next.map((f) => f.id));
-        router.refresh();
       });
       return;
     }
@@ -415,7 +404,6 @@ export function AppSidebar({
       setBoards(next);
       startTransition(async () => {
         await reorderBoards(next.map((b) => b.id));
-        router.refresh();
       });
     }
   }
@@ -495,8 +483,10 @@ export function AppSidebar({
                     action={(formData) => {
                       setAddingFolder(false);
                       startTransition(async () => {
-                        await createFolder(workspaceSlug, {}, formData);
-                        router.refresh();
+                        const result = await createFolder(workspaceSlug, {}, formData);
+                        if (result.folder) {
+                          setFolders((current) => [...current, result.folder!]);
+                        }
                       });
                     }}
                   >
