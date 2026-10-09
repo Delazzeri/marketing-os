@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { quickCreateBoard } from "@/lib/actions/boards";
 import type { BoardType } from "@/lib/validation/boards";
 import { BoardSettingsDialog } from "@/components/boards/BoardSettingsDialog";
@@ -14,16 +13,26 @@ const BOARD_TYPE_LABELS: Record<BoardType, string> = {
   whiteboard: "Quadro branco",
 };
 
+interface CreatedBoard {
+  id: number;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  folderId: number | null;
+  type: BoardType;
+}
+
 export function CreateBoardDialog({
   workspaceSlug,
   folderId,
   trigger,
+  onCreated,
 }: {
   workspaceSlug: string;
   folderId: number | null;
   trigger: React.ReactElement;
+  onCreated?: (board: CreatedBoard) => void;
 }) {
-  const router = useRouter();
   const [, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -39,11 +48,11 @@ export function CreateBoardDialog({
     setError(undefined);
     startTransition(async () => {
       try {
-        await quickCreateBoard(workspaceSlug, trimmedName, folderId, type);
+        const board = await quickCreateBoard(workspaceSlug, trimmedName, folderId, type);
         setOpen(false);
         setName("");
         setType("standard");
-        router.refresh();
+        onCreated?.(board);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Não foi possível criar o quadro.");
       } finally {

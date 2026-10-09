@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createGroup, type GroupFormState } from "@/lib/actions/items";
 import { ColorSwatchPicker } from "@/components/columns/ColorSwatchPicker";
 import { COLOR_PALETTE } from "@/lib/column-types/color-palette";
@@ -11,8 +10,13 @@ import { Plus } from "lucide-react";
 
 const initialState: GroupFormState = {};
 
-export function CreateGroupForm({ boardId }: { boardId: number }) {
-  const router = useRouter();
+export function CreateGroupForm({
+  boardId,
+  onCreated,
+}: {
+  boardId: number;
+  onCreated?: (group: { id: number; name: string; color: string | null }) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(createGroup.bind(null, boardId), initialState);
   const [color, setColor] = useState(COLOR_PALETTE[0]);
@@ -20,23 +24,21 @@ export function CreateGroupForm({ boardId }: { boardId: number }) {
 
   // Same render-time transition pattern used elsewhere in this repo (e.g.
   // InvitePersonModal): collapse the form back once the submit round-trips
-  // successfully, without reaching for useEffect. CreateGroupForm lives
-  // outside BoardContent's component tree (see page.tsx), so unlike
-  // create/delete item it can't push into local state directly — router.refresh()
-  // is the one mutation on this board page still doing a full re-fetch.
+  // successfully, without reaching for useEffect.
   const justSucceeded = wasPending && !pending && !state.error && open;
   if (wasPending !== pending) {
     setWasPending(pending);
     if (justSucceeded) setOpen(false);
   }
 
-  // router.refresh() touches Next's Router state, which React doesn't allow
-  // during another component's render — has to run in an effect, not inline
-  // above, or it throws "Cannot update a component while rendering a
-  // different component" (Router / CreateGroupForm).
+  // onCreated pushes into BoardWorkspace's state, a different component —
+  // React forbids that inline during this component's own render (throws
+  // "Cannot update a component while rendering a different component", and
+  // in practice double-fires the update). Has to run in an effect instead.
   useEffect(() => {
-    if (justSucceeded) router.refresh();
-  }, [justSucceeded, router]);
+    if (state.group) onCreated?.(state.group);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   if (!open) {
     return (

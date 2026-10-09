@@ -96,16 +96,27 @@ export async function quickCreateBoard(
   const baseSlug = slugify(trimmedName) || "board";
   let slug = baseSlug;
   for (let attempt = 1; attempt <= 20; attempt++) {
-    const { error: insertError } = await supabase.from("boards").insert({
-      workspace_id: workspace.id,
-      name: trimmedName,
-      slug,
-      folder_id: folderId,
-      type: parsed.data.type,
-    });
+    const { data: created, error: insertError } = await supabase
+      .from("boards")
+      .insert({
+        workspace_id: workspace.id,
+        name: trimmedName,
+        slug,
+        folder_id: folderId,
+        type: parsed.data.type,
+      })
+      .select("id, name, icon, color, folder_id, type")
+      .single();
     if (!insertError) {
       revalidatePath("/[workspaceSlug]", "layout");
-      return;
+      return {
+        id: created.id as number,
+        name: created.name as string,
+        icon: created.icon as string | null,
+        color: created.color as string | null,
+        folderId: created.folder_id as number | null,
+        type: created.type as BoardType,
+      };
     }
     if (insertError.code !== "23505") throw new Error(insertError.message);
     attempt += 1;

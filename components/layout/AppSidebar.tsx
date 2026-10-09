@@ -466,6 +466,7 @@ export function AppSidebar({
                 <CreateBoardDialog
                   workspaceSlug={workspaceSlug}
                   folderId={null}
+                  onCreated={(board) => setBoards((current) => [...current, board])}
                   trigger={
                     <button
                       type="button"

@@ -59,10 +59,27 @@ export function InlineEditableText({
 
   return (
     <span
+      // Renaming boards is used inside a <Link> (the sidebar row navigates
+      // to the board). A dblclick is two click events, and the first one
+      // fires the Link's navigation before the second completes — so a
+      // single click on this span has to be swallowed too, not just the
+      // dblclick, or the row navigates away before editing can start.
+      onClick={
+        readOnly
+          ? undefined
+          : (event) => {
+              if (event.detail > 1) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }
+      }
       onDoubleClick={
         readOnly
           ? undefined
-          : () => {
+          : (event) => {
+              event.preventDefault();
+              event.stopPropagation();
               setDraft(value);
               setEditing(true);
             }

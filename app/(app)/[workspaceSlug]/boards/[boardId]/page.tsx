@@ -3,8 +3,8 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BoardHeader } from "@/components/boards/BoardHeader";
-import { CreateGroupForm } from "@/components/boards/CreateGroupForm";
-import { BoardViewSwitcher } from "@/components/boards/BoardViewSwitcher";
+import { BoardTitle } from "@/components/boards/BoardTitle";
+import { BoardWorkspace } from "@/components/boards/BoardWorkspace";
 import { WhiteboardView } from "@/components/boards/WhiteboardView";
 import { PortalTokenPanel } from "@/components/portal/PortalTokenPanel";
 import { AutomationsPanel } from "@/components/automations/AutomationsPanel";
@@ -77,7 +77,7 @@ export default async function BoardPage({
           >
             {board.name.slice(0, 1).toUpperCase()}
           </span>
-          <h1 className="text-2xl font-semibold tracking-tight">{board.name}</h1>
+          <BoardTitle boardId={board.id} name={board.name} canEdit={canEdit} />
         </div>
         <WhiteboardView
           boardId={board.id}
@@ -178,7 +178,7 @@ export default async function BoardPage({
               board.name.slice(0, 1).toUpperCase()
             )}
           </span>
-          <h1 className="text-2xl font-semibold tracking-tight">{board.name}</h1>
+          <BoardTitle boardId={board.id} name={board.name} canEdit={canEdit} />
         </div>
         <BoardHeader
           workspaceId={board.workspace_id as number}
@@ -190,7 +190,7 @@ export default async function BoardPage({
         />
       </div>
 
-      <BoardViewSwitcher
+      <BoardWorkspace
         boardId={board.id}
         workspaceSlug={workspaceSlug}
         groups={groups ?? []}
@@ -203,12 +203,6 @@ export default async function BoardPage({
         itemColumnWidth={board.item_column_width as number | null}
         canEdit={canEdit}
       />
-
-      {canEdit && (
-        <div className="flex flex-wrap items-center gap-2">
-          <CreateGroupForm boardId={board.id} />
-        </div>
-      )}
 
       {canEdit && (
         <div className="flex items-center justify-end gap-1 border-t border-border pt-3">
