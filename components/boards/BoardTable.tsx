@@ -27,7 +27,18 @@ import { setItemColumnWidth } from "@/lib/actions/boards";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { GripVertical, X, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { GripVertical, Trash2 } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
 
 interface ColumnData {
@@ -227,6 +238,7 @@ function SortableItemRow({
             </span>
           )}
           <Link
+            data-tour="item-title"
             href={`/${workspaceSlug}/boards/${boardId}/items/${item.id}`}
             className={`truncate hover:underline ${overdue ? "text-destructive" : ""}`}
           >
@@ -238,22 +250,44 @@ function SortableItemRow({
             </Badge>
           )}
           {canEdit && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              onClick={onDelete}
-              className="ml-auto shrink-0 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive"
-              title="Excluir item"
-            >
-              <X />
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    className="ml-auto shrink-0 text-muted-foreground/40 group-hover:text-muted-foreground hover:text-destructive"
+                    title="Excluir item"
+                    aria-label={`Excluir ${item.title}`}
+                  >
+                    <Trash2 />
+                  </Button>
+                }
+              />
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir &ldquo;{item.title}&rdquo;?</AlertDialogTitle>
+                  <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={onDelete}
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </td>
       {columns.map((column) => (
         <td
           key={column.id}
+          data-tour={column.type === "status" ? "status-cell" : undefined}
           className="overflow-hidden px-1 py-1"
           style={{
             width: (column.config.width as number | undefined) ?? DEFAULT_COLUMN_WIDTH,

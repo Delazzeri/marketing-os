@@ -83,7 +83,7 @@ export function ViewToggle({
     <Tabs value={view} onValueChange={(value) => onViewChange(value as ViewKind)}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={visibleOrder} strategy={horizontalListSortingStrategy}>
-          <TabsList>
+          <TabsList data-tour="view-tabs">
             {visibleOrder.map((kind) => (
               <SortableTabTrigger
                 key={kind}

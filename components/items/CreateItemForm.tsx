@@ -30,7 +30,7 @@ export function CreateItemForm({
   }, [state]);
 
   return (
-    <form action={formAction} className="flex items-center gap-2 px-1">
+    <form action={formAction} data-tour="new-item" className="flex items-center gap-2 px-1">
       <input type="hidden" name="groupId" value={groupId} />
       <Input name="title" placeholder="Novo item" required className="max-w-sm" />
       <Button type="submit" variant="ghost" size="icon" disabled={pending}>

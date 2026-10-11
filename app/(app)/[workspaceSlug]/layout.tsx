@@ -1,4 +1,7 @@
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import { GuidedTour } from "@/components/onboarding/GuidedTour";
+import { GUIDED_TOUR_COOKIE } from "@/lib/guided-tour";
 import { createClient } from "@/lib/supabase/server";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
@@ -55,6 +58,26 @@ export default async function WorkspaceLayout({
       : Promise.resolve({ data: [] }),
   ]);
 
+  // Onboarding tour (see signIn): only resolved when the cookie is present,
+  // so regular sessions pay for no extra query. The tour walks through a
+  // board, so pick the first one in sidebar order that has items to show.
+  const showGuidedTour = (await cookies()).get(GUIDED_TOUR_COOKIE)?.value === "1";
+  let guidedTourBoardId: number | null = null;
+  if (showGuidedTour) {
+    const standardBoardIds = (boards ?? [])
+      .filter((board) => (board.type as BoardType) !== "whiteboard")
+      .map((board) => board.id as number);
+    if (standardBoardIds.length > 0) {
+      const { data: boardsWithItems } = await supabase
+        .from("items")
+        .select("board_id")
+        .in("board_id", standardBoardIds)
+        .limit(500);
+      const withItems = new Set((boardsWithItems ?? []).map((row) => row.board_id as number));
+      guidedTourBoardId = standardBoardIds.find((id) => withItems.has(id)) ?? standardBoardIds[0];
+    }
+  }
+
   const boardSummaries = (boards ?? []).map((board) => ({
     id: board.id,
     name: board.name,
@@ -78,14 +101,17 @@ export default async function WorkspaceLayout({
         <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <SidebarTrigger />
           {user && (
-            <NotificationBell
-              userId={user.id}
-              notifications={(notifications ?? []) as unknown as AppNotification[]}
-            />
+            <div data-tour="notifications">
+              <NotificationBell
+                userId={user.id}
+                notifications={(notifications ?? []) as unknown as AppNotification[]}
+              />
+            </div>
           )}
         </header>
         {children}
       </SidebarInset>
+      {showGuidedTour && <GuidedTour workspaceSlug={workspaceSlug} boardId={guidedTourBoardId} />}
     </SidebarProvider>
   );
 }

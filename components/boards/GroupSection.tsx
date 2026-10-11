@@ -107,7 +107,7 @@ export function GroupSection({
       }}
       className="flex flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card pl-3 shadow-sm"
     >
-      <div className={`flex items-center gap-2 pr-3 pt-3 ${collapsed ? "pb-3" : ""}`}>
+      <div data-tour="group-header" className={`flex items-center gap-2 pr-3 pt-3 ${collapsed ? "pb-3" : ""}`}>
         {canEdit && (
           <span
             {...attributes}
@@ -145,7 +145,12 @@ export function GroupSection({
         <Badge variant="secondary">{items.length}</Badge>
         {collapsed && <GroupFooterProgress items={items} statusColumn={statusColumn} />}
         {canEdit && (
-          <DeleteGroupButton groupId={group.id} groupName={group.name} onDeleted={onGroupDeleted} />
+          <DeleteGroupButton
+            groupId={group.id}
+            groupName={group.name}
+            itemCount={items.length}
+            onDeleted={onGroupDeleted}
+          />
         )}
       </div>
 

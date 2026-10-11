@@ -209,7 +209,7 @@ export default async function BoardPage({
           <BoardSettingsDialog
             title="Automações"
             trigger={
-              <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
+              <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" data-tour="automations">
                 <Zap />
                 Automações
               </Button>
@@ -226,7 +226,7 @@ export default async function BoardPage({
           <BoardSettingsDialog
             title="Portal do cliente"
             trigger={
-              <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
+              <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" data-tour="portal">
                 <Link2 />
                 Portal do cliente
               </Button>

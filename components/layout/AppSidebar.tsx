@@ -419,9 +419,10 @@ export function AppSidebar({
               render={<Link href={`/${workspaceSlug}`} />}
               className="group-data-[collapsible=icon]:justify-center"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary to-accent">
-                <Image src="/logo-mkt.png" alt="" width={32} height={32} className="h-full w-full object-cover" />
-              </div>
+              {/* Collapsed (icon-only) sidebar shows just the initial so the button isn't empty. */}
+              <span className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold group-data-[collapsible=icon]:flex">
+                {workspaceName.slice(0, 1).toUpperCase()}
+              </span>
               <div className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
                 <span className="truncate text-sm font-semibold">{workspaceName}</span>
                 <span className="truncate text-xs text-sidebar-foreground/50">Workspace</span>
@@ -431,7 +432,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
+        <SidebarGroup data-tour="sidebar-boards">
           <SidebarGroupLabel>Quadros</SidebarGroupLabel>
           <SidebarGroupContent>
             <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

@@ -3,8 +3,6 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CreateBoardForm } from "@/components/boards/CreateBoardForm";
 import { WelcomeEditor } from "@/components/workspace/WelcomeEditor";
-import { GettingStarted } from "@/components/workspace/GettingStarted";
-import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentUserContext } from "@/lib/auth/roles";
 import { canManageTeam } from "@/lib/roles";
 import { avatarColorFor } from "@/lib/avatar-color";
@@ -33,32 +31,8 @@ export default async function WorkspacePage({
     .eq("workspace_id", workspace.id)
     .order("position", { ascending: true });
 
-  const { userId, isAdmin, workspaceRole } = await getCurrentUserContext(workspace.id);
+  const { isAdmin, workspaceRole } = await getCurrentUserContext(workspace.id);
   const canEditWelcome = canManageTeam(workspaceRole, isAdmin);
-
-  // The guide points at one real board, preferring one that already has a
-  // permanent (non-expiring, non-revoked) Portal link so the last step has
-  // somewhere to go. portal_tokens is
-  // service-role only; scoping by the board ids the caller could already read
-  // through RLS above keeps this from leaking other workspaces' tokens.
-  const standardBoards = (boards ?? []).filter((board) => (board.type as BoardType) !== "whiteboard");
-  let portalToken: { board_id: number; token: string } | null = null;
-  if (standardBoards.length > 0) {
-    const { data } = await createServiceClient()
-      .from("portal_tokens")
-      .select("board_id, token")
-      .in(
-        "board_id",
-        standardBoards.map((board) => board.id),
-      )
-      .is("revoked_at", null)
-      .is("expires_at", null)
-      .order("created_at", { ascending: true })
-      .limit(1);
-    portalToken = data?.[0] ?? null;
-  }
-  const guideBoard =
-    standardBoards.find((board) => board.id === portalToken?.board_id) ?? standardBoards[0] ?? null;
 
   const links = (workspace.welcome_links ?? []) as { label: string; url: string }[];
   const message = (workspace.welcome_message as string | null) ?? "";
@@ -78,16 +52,6 @@ export default async function WorkspacePage({
         </div>
         {canEditWelcome && <WelcomeEditor workspaceId={workspace.id} message={message} links={links} />}
       </div>
-
-      {userId && (
-        <GettingStarted
-          userId={userId}
-          workspaceSlug={workspaceSlug}
-          boardId={guideBoard?.id ?? null}
-          boardName={guideBoard?.name ?? null}
-          portalUrl={portalToken ? `/portal/${portalToken.token}` : null}
-        />
-      )}
 
       {links.length > 0 && (
         <div className="flex flex-col gap-2">
