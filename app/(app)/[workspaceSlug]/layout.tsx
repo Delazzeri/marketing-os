@@ -5,11 +5,12 @@ import { GUIDED_TOUR_COOKIE } from "@/lib/guided-tour";
 import { createClient } from "@/lib/supabase/server";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { Button } from "@/components/ui/button";
+import { signOut } from "@/lib/actions/auth";
 import { getCurrentUserContext } from "@/lib/auth/roles";
 import { canWrite } from "@/lib/roles";
-import type { AppNotification } from "@/lib/types";
 import type { BoardType } from "@/lib/validation/boards";
+import { LogOut } from "lucide-react";
 import type { ReactNode } from "react";
 
 export default async function WorkspaceLayout({
@@ -37,7 +38,7 @@ export default async function WorkspaceLayout({
   const { isAdmin, workspaceRole } = await getCurrentUserContext(workspace.id);
   const canEdit = canWrite(workspaceRole, isAdmin);
 
-  const [{ data: boards }, { data: folders }, { data: notifications }] = await Promise.all([
+  const [{ data: boards }, { data: folders }] = await Promise.all([
     supabase
       .from("boards")
       .select("id, name, icon, color, folder_id, type")
@@ -48,14 +49,6 @@ export default async function WorkspaceLayout({
       .select("id, name, color")
       .eq("workspace_id", workspace.id)
       .order("position", { ascending: true }),
-    user
-      ? supabase
-          .from("notifications")
-          .select("id, user_id, type, payload, read, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(20)
-      : Promise.resolve({ data: [] }),
   ]);
 
   // Onboarding tour (see signIn): only resolved when the cookie is present,
@@ -101,12 +94,12 @@ export default async function WorkspaceLayout({
         <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <SidebarTrigger />
           {user && (
-            <div data-tour="notifications">
-              <NotificationBell
-                userId={user.id}
-                notifications={(notifications ?? []) as unknown as AppNotification[]}
-              />
-            </div>
+            <form action={signOut}>
+              <Button type="submit" variant="ghost" size="sm" data-tour="sign-out">
+                <LogOut />
+                Sair
+              </Button>
+            </form>
           )}
         </header>
         {children}

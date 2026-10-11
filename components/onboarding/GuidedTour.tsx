@@ -28,9 +28,9 @@ const STEPS: TourStep[] = [
   },
   {
     page: "home",
-    anchor: "notifications",
-    title: "Notificações",
-    body: "Quando alguém te menciona com @ ou uma automação te atribui algo, o aviso chega aqui.",
+    anchor: "sign-out",
+    title: "Sair",
+    body: "Quando terminar de explorar, é por aqui que você sai da conta.",
   },
   {
     page: "board",

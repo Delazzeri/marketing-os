@@ -9,7 +9,7 @@ export const GUIDED_TOUR_STEP_KEY = "guided-tour:step";
 
 export type GuidedTourAnchor =
   | "sidebar-boards"
-  | "notifications"
+  | "sign-out"
   | "view-tabs"
   | "group-header"
   | "item-title"
