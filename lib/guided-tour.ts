@@ -15,5 +15,4 @@ export type GuidedTourAnchor =
   | "item-title"
   | "status-cell"
   | "new-item"
-  | "automations"
   | "portal";

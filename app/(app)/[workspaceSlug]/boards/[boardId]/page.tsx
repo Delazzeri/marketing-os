@@ -7,7 +7,6 @@ import { BoardTitle } from "@/components/boards/BoardTitle";
 import { BoardWorkspace } from "@/components/boards/BoardWorkspace";
 import { WhiteboardView } from "@/components/boards/WhiteboardView";
 import { PortalTokenPanel } from "@/components/portal/PortalTokenPanel";
-import { AutomationsPanel } from "@/components/automations/AutomationsPanel";
 import { BoardSettingsDialog } from "@/components/boards/BoardSettingsDialog";
 import { computeOverdueItemIds } from "@/lib/automations/overdue";
 import { getWorkspaceMembersWithEmail } from "@/lib/supabase/user-lookup";
@@ -16,7 +15,7 @@ import { getCurrentUserContext } from "@/lib/auth/roles";
 import { canWrite, canManageTeam as computeCanManageTeam } from "@/lib/roles";
 import { VIEW_KINDS, type BoardType, type ViewKind } from "@/lib/validation/boards";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Zap, Link2 } from "lucide-react";
+import { ArrowLeft, Link2 } from "lucide-react";
 import type { ColumnType } from "@/lib/column-types/schemas";
 import type { DashboardWidgetType } from "@/lib/validation/dashboards";
 
@@ -206,23 +205,6 @@ export default async function BoardPage({
 
       {canEdit && (
         <div className="flex items-center justify-end gap-1 border-t border-border pt-3">
-          <BoardSettingsDialog
-            title="Automações"
-            trigger={
-              <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" data-tour="automations">
-                <Zap />
-                Automações
-              </Button>
-            }
-          >
-            <AutomationsPanel
-              boardId={board.id}
-              workspaceId={board.workspace_id as number}
-              columns={boardColumns}
-              groups={groups ?? []}
-            />
-          </BoardSettingsDialog>
-
           <BoardSettingsDialog
             title="Portal do cliente"
             trigger={

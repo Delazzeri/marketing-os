@@ -64,12 +64,6 @@ const STEPS: TourStep[] = [
   },
   {
     page: "board",
-    anchor: "automations",
-    title: "Automações",
-    body: "Regras prontas que trabalham por você: avisar o responsável quando o status muda, marcar itens atrasados, definir responsável padrão...",
-  },
-  {
-    page: "board",
     anchor: "portal",
     title: "Portal do cliente",
     body: "Gere um link somente-leitura para o cliente acompanhar as entregas do quadro, sem precisar criar conta.",
